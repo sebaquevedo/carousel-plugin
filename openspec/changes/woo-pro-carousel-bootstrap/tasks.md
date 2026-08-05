@@ -47,6 +47,6 @@ Chain strategy: pending
 
 ## Phase 4: Docs & Verification
 
-- [ ] 4.1 Create `VENDORED_ASSETS.md` — pin record, acquisition, browser baseline (Chrome/Edge 110+, Safari 16.4+, Firefox 110+), v12.2.0 fallback. (FA-1)
-- [ ] 4.2 Run `composer phpcs` → zero errors (always-green gate).
+- [x] 4.1 Create `VENDORED_ASSETS.md` — pin record, acquisition, browser baseline (Chrome/Edge 110+, Safari 16.4+, Firefox 110+), v12.2.0 fallback. (FA-1)
+- [x] 4.2 Run `composer phpcs` → zero errors (always-green gate). (exit code 0)
 - [ ] 4.3 Manual wp-env smoke: fresh WP+WC renders `[cwc_carousel]`; no-WC shows notice without fatal; Swiper/CSS enqueued ONLY on carousel pages; 1/2/3 breakpoints; `ids` order preserved.
