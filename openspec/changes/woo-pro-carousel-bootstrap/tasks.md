@@ -39,11 +39,11 @@ Chain strategy: pending
 
 ## Phase 3: Frontend Assets
 
-- [ ] 3.1 Commit vendored Swiper 14.0.7 `swiper-bundle.min.js`/`.css` under `assets/vendor/swiper/`; verify filenames against downloaded package. (FA-1, D4)
-- [ ] 3.2 Create `includes/class-assets.php` — handles `cwc-swiper` (js+css ver `'14.0.7'`), `cwc-carousel` (css `CWC_VERSION`), `cwc-carousel-frontend` (js deps `['cwc-swiper']`, in_footer); header pre-scan `has_shortcode($post->post_content, 'cwc_carousel')` + `wp_footer` render-flag late enqueue. (FA-2, D3)
-- [ ] 3.3 Create `assets/js/frontend.js` — DOMContentLoaded → `document.querySelectorAll('.cwc-carousel.swiper')` → `new Swiper(..., {breakpoints:{768:2,1024:3}, slidesPerView:1, spaceBetween:16, navigation, pagination})`. (FA-2, D4)
-- [ ] 3.4 Create `assets/css/carousel.css` — `--cwc-*` custom properties (colors/borders/gap/typography) on `.cwc-carousel` at normal specificity + card/container styles. (FA-3, CR-3, D6)
-- [ ] 3.5 Create `languages/.gitkeep`. (PB-3)
+- [x] 3.1 Commit vendored Swiper 14.0.7 `swiper-bundle.min.js`/`.css` under `assets/vendor/swiper/`; verify filenames against downloaded package. (FA-1, D4)
+- [x] 3.2 Create `includes/class-assets.php` — handles `cwc-swiper` (js+css ver `'14.0.7'`), `cwc-carousel` (css `CWC_VERSION`), `cwc-carousel-frontend` (js deps `['cwc-swiper']`, in_footer); header pre-scan `has_shortcode($post->post_content, 'cwc_carousel')` + `wp_footer` render-flag late enqueue. (FA-2, D3)
+- [x] 3.3 Create `assets/js/frontend.js` — DOMContentLoaded → `document.querySelectorAll('.cwc-carousel.swiper')` → `new Swiper(..., {breakpoints:{768:2,1024:3}, slidesPerView:1, spaceBetween:16, navigation, pagination})`. (FA-2, D4)
+- [x] 3.4 Create `assets/css/carousel.css` — `--cwc-*` custom properties (colors/borders/gap/typography) on `.cwc-carousel` at normal specificity + card/container styles. (FA-3, CR-3, D6)
+- [x] 3.5 Create `languages/.gitkeep`. (PB-3)
 
 ## Phase 4: Docs & Verification
 
