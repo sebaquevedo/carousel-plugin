@@ -1,0 +1,6 @@
+# Local AI runtime state
+.atl/
+
+# Composer dev dependencies (WPCS). Never shipped in the plugin ZIP.
+/vendor/
+/composer.lock

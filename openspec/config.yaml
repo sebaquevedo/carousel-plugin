@@ -1,0 +1,39 @@
+project: carousel-plugin
+description: >
+  Custom Woo Pro Carousel is a new WordPress plugin providing a WooCommerce
+  product carousel. Uses Swiper.js, is Astra theme compatible, and ships a
+  shortcode plus a Gutenberg block. Includes admin settings with tabs, AJAX
+  add-to-cart, quick view, and quantity selector. Plugin code does not exist
+  yet; this project is at SDD init.
+context: >
+  Stack: WordPress plugin (PHP) + WooCommerce + Swiper.js + Gutenberg block.
+  Conventions: WordPress Coding Standards (WPCS), sanitization/escaping all
+  output, REST nonces + capabilities for AJAX, Settings API for admin options,
+  i18n via load_plugin_textdomain. 18 WordPress agent-skills installed under
+  .claude/skills and .cursor/skills (blocks, REST API, plugin dev, directory
+  guidelines, performance, phpstan, playwright/playground, wpds, etc.). Git
+  remote `origin` -> github.com/sebaquevedo/carousel-plugin, empty repo.
+strict_tdd: false
+testing:
+  runner: none-configured
+  frameworks:
+    unit: {}
+    integration: {}
+    e2e: {}
+  coverage: false
+  quality:
+    linter: phpcs (WPCS) - not installed
+    type_checker: phpstan - installable via same plugin skill, not set up
+    formatter: none
+  notes: >
+    PHP 8.3.30, Composer 2.9.7, and Docker 29.2.1 are on the machine, so PHPUnit
+    and wp-env are feasible but not yet configured. WP-CLI is NOT installed.
+    strict_tdd stays false until a real test runner/config exists.
+phases:
+  proposal: {}
+  spec: {}
+  design: {}
+  tasks: {}
+  apply: {}
+  verify: {}
+  archive: {}
