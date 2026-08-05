@@ -26,10 +26,10 @@ Chain strategy: pending
 
 ## Phase 1: Foundations
 
-- [ ] 1.1 Create `composer.json` (require-dev wpcs ^3.1, `phpcs`/`phpcbf` scripts). (PB)
-- [ ] 1.2 Create `phpcs.xml.dist` (`WordPress` + `WordPress-Extra`, exclude `vendor/`, `assets/vendor/`).
-- [ ] 1.3 Create `custom-woo-pro-carousel.php` — header (`Plugin Name`, `Version`, `Requires PHP >= 7.4`, `Text Domain: cwc-carousel`), consts `CWC_VERSION/CWC_FILE/CWC_DIR/CWC_URL` guarded, top-level `register_activation_hook`/`register_deactivation_hook` → no-op, require-map of 5 `includes/` classes, boot `CWC_Plugin` on `plugins_loaded` (prio 10). (PB-1, PB-2, D1, D2)
-- [ ] 1.4 Create `includes/class-plugin.php` — `CWC_Plugin::run()`: always `load_plugin_textdomain('cwc-carousel', false, .../languages)` + register `admin_notices` notice callback (capability `activate_plugins`, escaped/translatable); then `class_exists('WooCommerce')` check → on `admin_init` `deactivate_plugins(plugin_basename(CWC_FILE))`, no partial state, instantiate `CWC_Assets` + `CWC_Shortcode` only when WC present. (PB-3, WD-1, WD-2, WD-3)
+- [x] 1.1 Create `composer.json` (require-dev wpcs ^3.1, `phpcs`/`phpcbf` scripts). (PB)
+- [x] 1.2 Create `phpcs.xml.dist` (`WordPress` + `WordPress-Extra`, exclude `vendor/`, `assets/vendor/`).
+- [x] 1.3 Create `custom-woo-pro-carousel.php` — header (`Plugin Name`, `Version`, `Requires PHP >= 7.4`, `Text Domain: cwc-carousel`), consts `CWC_VERSION/CWC_FILE/CWC_DIR/CWC_URL` guarded, top-level `register_activation_hook`/`register_deactivation_hook` → no-op, require-map of 5 `includes/` classes, boot `CWC_Plugin` on `plugins_loaded` (prio 10). (PB-1, PB-2, D1, D2)
+- [x] 1.4 Create `includes/class-plugin.php` — `CWC_Plugin::run()`: always `load_plugin_textdomain('cwc-carousel', false, .../languages)` + register `admin_notices` notice callback (capability `activate_plugins`, escaped/translatable); then `class_exists('WooCommerce')` check → on `admin_init` `deactivate_plugins(plugin_basename(CWC_FILE))`, no partial state, instantiate `CWC_Assets` + `CWC_Shortcode` only when WC present. (PB-3, WD-1, WD-2, WD-3)
 
 ## Phase 2: Data & Render Pipeline
 
