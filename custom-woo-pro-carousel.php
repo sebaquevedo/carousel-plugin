@@ -78,6 +78,7 @@ register_deactivation_hook( __FILE__, 'cwc_carousel_deactivate' );
 $cwc_includes = array(
 	'class-plugin.php',
 	'class-assets.php',
+	'class-settings.php',
 	'class-query.php',
 	'class-renderer.php',
 	'class-shortcode.php',
