@@ -64,15 +64,18 @@ class CWC_Settings {
 		$defaults = $this->defaults();
 
 		$known = array(
-			'type'       => $defaults['type'],
-			'title'      => $defaults['title'],
-			'category'   => $defaults['category'],
-			'categories' => $defaults['categories'],
-			'mix'        => $defaults['mix'],
-			'count'      => $defaults['count'],
-			'slides'     => $defaults['slides'],
-			'buy'        => $defaults['buy'],
-			'buy_text'   => $defaults['buy_text'],
+			'type'          => $defaults['type'],
+			'title'         => $defaults['title'],
+			'category'      => $defaults['category'],
+			'categories'    => $defaults['categories'],
+			'mix'           => $defaults['mix'],
+			'count'         => $defaults['count'],
+			'slides'        => $defaults['slides'],
+			'slides_tablet' => $defaults['slides_tablet'],
+			'slides_mobile' => $defaults['slides_mobile'],
+			'gap'           => $defaults['gap'],
+			'buy'           => $defaults['buy'],
+			'buy_text'      => $defaults['buy_text'],
 		);
 
 		return $this->normalize( wp_parse_args( $atts, $known ) );
