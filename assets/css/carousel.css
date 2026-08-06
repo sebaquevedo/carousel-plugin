@@ -80,6 +80,50 @@
 	color: var( --cwc-color-text );
 }
 
+.cwc-card__category-line {
+	margin: 0;
+	padding: 0 calc( var( --cwc-gap ) * 0.75 );
+	font-size: 0.85em;
+	color: var( --cwc-color-title );
+}
+
+.cwc-card__buy {
+	display: inline-block;
+	margin: 0 calc( var( --cwc-gap ) * 0.75 ) calc( var( --cwc-gap ) * 0.75 );
+	padding: calc( var( --cwc-gap ) * 0.375 ) calc( var( --cwc-gap ) * 0.75 );
+	border-radius: var( --cwc-border-radius );
+	background-color: var( --cwc-color-accent );
+	color: var( --cwc-color-background );
+	text-decoration: none;
+}
+
+.cwc-category-card {
+	box-sizing: border-box;
+	height: 100%;
+	overflow: hidden;
+	border: var( --cwc-border-width ) solid var( --cwc-color-border );
+	border-radius: var( --cwc-border-radius );
+	background-color: var( --cwc-color-background );
+}
+
+.cwc-category-card__link {
+	display: block;
+	color: inherit;
+	text-decoration: none;
+}
+
+.cwc-category-card__image {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.cwc-category-card__image--placeholder {
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	background-color: var( --cwc-color-border );
+}
+
 .cwc-carousel .swiper-button-prev,
 .cwc-carousel .swiper-button-next {
 	color: var( --cwc-color-accent );
