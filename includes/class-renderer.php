@@ -213,6 +213,13 @@ class CWC_Renderer {
 				array( 'class' => 'cwc-category-card__image' )
 			);
 		} else {
+			$image = '';
+		}
+
+		// A deleted/missing attachment yields an empty string from
+		// wp_get_attachment_image(); fall back to the placeholder so the card
+		// never renders an empty <a> region (CR-5).
+		if ( '' === trim( (string) $image ) ) {
 			$image = '<span class="cwc-category-card__image cwc-category-card__image--placeholder" aria-hidden="true"></span>';
 		}
 
