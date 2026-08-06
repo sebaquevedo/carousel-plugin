@@ -43,12 +43,13 @@ class CWC_Query {
 	 *                                        "recent products".
 	 *     @type int              $limit      Maximum number of products (0 yields
 	 *                                        an empty result).
-	 *     @type int              $category   Single product_cat term id (scoped
-	 *                                        primary mode, PQ-4).
-	 *     @type int[]            $categories product_cat term ids for mix mode
-	 *                                        (PQ-5).
-	 *     @type bool             $mix        When true, filter by any of
-	 *                                        $categories (operator IN).
+	 * @type int              $category   Single product_cat term id (scoped
+	 *                                    primary mode, PQ-4).
+	 * @type int[]            $categories product_cat term ids; when non-empty,
+	 *                                    always filters as an IN list (PQ-5).
+	 * @type bool             $mix        Explicit flag kept for config parity;
+	 *                                    non-empty $categories filter regardless
+	 *                                    (PQ-5).
 	 * }
 	 * @return WC_Product[]
 	 */
@@ -123,12 +124,12 @@ class CWC_Query {
 	/**
 	 * Builds the product_cat tax_query from the selection arguments.
 	 *
-	 * Mix mode (PQ-5) takes precedence: when mix is enabled and $categories
-	 * sanitizes to one or more positive term ids, the filter matches products
-	 * in ANY of those terms via a single tax_query with the default IN
-	 * operator. Otherwise a single positive $category id scopes the carousel
-	 * to that one term (PQ-4). An empty sanitized selection yields no filter.
-	 * No raw SQL is used in either mode.
+	 * A non-empty $categories list always filters products to those terms via a
+	 * single tax_query with the default IN operator — the list is never silently
+	 * dropped when mix is off (PQ-5); `mix` stays an explicit flag but is not a
+	 * precondition for the filter. Otherwise a single positive $category id
+	 * scopes the carousel to that one term (PQ-4). An empty sanitized selection
+	 * yields no filter. No raw SQL is used in either mode.
 	 *
 	 * @since 0.1.0
 	 *
@@ -153,7 +154,7 @@ class CWC_Query {
 
 		$category = absint( $args['category'] );
 
-		if ( $args['mix'] && ! empty( $categories ) ) {
+		if ( ! empty( $categories ) ) {
 			return array(
 				array(
 					'taxonomy' => 'product_cat',
