@@ -57,6 +57,8 @@ class CWC_Shortcode {
 				'mix'        => '',
 				'count'      => '',
 				'slides'     => '',
+				'arrows'     => '',
+				'pagination' => '',
 				'buy'        => '',
 				'buy_text'   => '',
 				'ids'        => '',

@@ -88,6 +88,8 @@ class CWC_Settings {
 			'slides_tablet' => $defaults['slides_tablet'],
 			'slides_mobile' => $defaults['slides_mobile'],
 			'gap'           => $defaults['gap'],
+			'arrows'        => $defaults['arrows'],
+			'pagination'    => $defaults['pagination'],
 			'buy'           => $defaults['buy'],
 			'buy_text'      => $defaults['buy_text'],
 		);
@@ -118,6 +120,8 @@ class CWC_Settings {
 			'slides_tablet' => 2,
 			'slides_mobile' => 1,
 			'gap'           => 16,
+			'arrows'        => true,
+			'pagination'    => true,
 			'buy'           => true,
 			'buy_text'      => 'Comprar',
 		);
@@ -149,6 +153,8 @@ class CWC_Settings {
 			'slides_tablet' => absint( $merged['slides_tablet'] ),
 			'slides_mobile' => absint( $merged['slides_mobile'] ),
 			'gap'           => absint( $merged['gap'] ),
+			'arrows'        => $this->parse_bool( $merged['arrows'] ),
+			'pagination'    => $this->parse_bool( $merged['pagination'] ),
 			'buy'           => $this->parse_bool( $merged['buy'] ),
 			'buy_text'      => sanitize_text_field( (string) $merged['buy_text'] ),
 		);
