@@ -79,6 +79,7 @@ $cwc_includes = array(
 	'class-plugin.php',
 	'class-assets.php',
 	'class-settings.php',
+	'class-admin.php',
 	'class-query.php',
 	'class-renderer.php',
 	'class-shortcode.php',

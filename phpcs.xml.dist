@@ -13,6 +13,18 @@
         <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
     </rule>
 
+    <!-- WooCommerce registers `manage_woocommerce` as a dynamic capability at
+         runtime; it is not a core WP capability, so the WP.Capabilities sniff
+         does not know it. Declaring it keeps the carousel admin gate visible
+         to static analysis without weakening the rule (D7 admin). -->
+    <rule ref="WordPress.WP.Capabilities">
+        <properties>
+            <property name="custom_capabilities" type="array" extend="true">
+                <element value="manage_woocommerce"/>
+            </property>
+        </properties>
+    </rule>
+
     <!-- Scan the whole plugin repository. -->
     <file>.</file>
 

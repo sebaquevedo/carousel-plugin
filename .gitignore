@@ -1,6 +1,10 @@
 # Local AI runtime state
 .atl/
 
+# Local AI tooling skills (Claude/Cursor project skills). Never shipped.
+.claude/
+.cursor/
+
 # Composer dev dependencies (WPCS). Never shipped in the plugin ZIP.
 /vendor/
 /composer.lock

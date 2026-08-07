@@ -133,9 +133,10 @@ class CWC_Plugin {
 	/**
 	 * Instantiates the carousel modules that are present.
 	 *
-	 * CWC_Assets and CWC_Shortcode land in later PRs of this chain; the
-	 * class_exists() guards keep this foundation slice from fataling before
-	 * those files exist. When present, each class registers its own hooks.
+	 * Each module registers its own hooks; the class_exists() guards keep this
+	 * bootstrap from fataling when a module file is not (yet) loaded — for
+	 * example on the no-WooCommerce path, where these admin/frontend classes
+	 * are never wired.
 	 *
 	 * @since 0.1.0
 	 * @return void
@@ -147,6 +148,14 @@ class CWC_Plugin {
 
 		if ( class_exists( 'CWC_Shortcode' ) ) {
 			new CWC_Shortcode();
+		}
+
+		if ( class_exists( 'CWC_Settings' ) ) {
+			new CWC_Settings();
+		}
+
+		if ( class_exists( 'CWC_Admin' ) ) {
+			new CWC_Admin();
 		}
 	}
 }
