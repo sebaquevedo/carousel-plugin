@@ -92,6 +92,17 @@ class CWC_Admin {
 			)
 		);
 
+		// Align the options.php save gate with the page/menu capability so a
+		// Shop Manager (manage_woocommerce) who can open the page can also save
+		// it (R1-W1). By default options.php requires manage_options, which
+		// would 403 the same button that already wrote category images.
+		add_filter(
+			"option_page_capability_{$this->option_group}",
+			static function () {
+				return 'manage_woocommerce';
+			}
+		);
+
 		add_settings_section(
 			'cwc_carousel_main',
 			__( 'Carousel defaults', 'cwc-carousel' ),
