@@ -1,0 +1,134 @@
+/**
+ * Carousel theming tokens and card/container styles.
+ *
+ * Theme-able values are declared as CSS custom properties on the
+ * .cwc-carousel container at normal specificity (D6), so a theme or a later
+ * slice can override them (via wp_add_inline_style) without re-compiling
+ * assets (FA-3, CR-3). Swiper's 16px spaceBetween mirrors --cwc-gap.
+ */
+
+.cwc-carousel {
+	/* Colors. */
+	--cwc-color-text: #1a1a1a;
+	--cwc-color-title: #1a1a1a;
+	--cwc-color-border: #e5e5e5;
+	--cwc-color-background: #ffffff;
+	--cwc-color-accent: #96588a; /* WooCommerce default primary. */
+
+	/* Borders. */
+	--cwc-border-radius: 4px;
+	--cwc-border-width: 1px;
+
+	/* Gap (mirrors Swiper spaceBetween: 16). */
+	--cwc-gap: 16px;
+
+	/* Typography. */
+	--cwc-font-family: inherit;
+	--cwc-font-size: 1rem;
+	--cwc-title-font-size: 1.5rem;
+
+	margin: 0 0 calc( var( --cwc-gap ) * 2 );
+	font-family: var( --cwc-font-family );
+	font-size: var( --cwc-font-size );
+	color: var( --cwc-color-text );
+}
+
+.cwc-carousel__title {
+	margin: 0 0 var( --cwc-gap );
+	font-size: var( --cwc-title-font-size );
+	color: var( --cwc-color-title );
+}
+
+.cwc-card {
+	box-sizing: border-box;
+	height: 100%;
+	overflow: hidden;
+	border: var( --cwc-border-width ) solid var( --cwc-color-border );
+	border-radius: var( --cwc-border-radius );
+	background-color: var( --cwc-color-background );
+}
+
+.cwc-card__link {
+	display: block;
+	color: inherit;
+	text-decoration: none;
+}
+
+.cwc-card__image {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.cwc-card__image--placeholder {
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	background-color: var( --cwc-color-border );
+}
+
+.cwc-card__title {
+	margin: 0;
+	padding: calc( var( --cwc-gap ) * 0.75 ) calc( var( --cwc-gap ) * 0.75 ) 0;
+	font-size: var( --cwc-font-size );
+	line-height: 1.4;
+	color: var( --cwc-color-text );
+}
+
+.cwc-card__price {
+	padding: calc( var( --cwc-gap ) * 0.5 ) calc( var( --cwc-gap ) * 0.75 )
+		calc( var( --cwc-gap ) * 0.75 );
+	color: var( --cwc-color-text );
+}
+
+.cwc-card__category-line {
+	margin: 0;
+	padding: 0 calc( var( --cwc-gap ) * 0.75 );
+	font-size: 0.85em;
+	color: var( --cwc-color-title );
+}
+
+.cwc-card__buy {
+	display: inline-block;
+	margin: 0 calc( var( --cwc-gap ) * 0.75 ) calc( var( --cwc-gap ) * 0.75 );
+	padding: calc( var( --cwc-gap ) * 0.375 ) calc( var( --cwc-gap ) * 0.75 );
+	border-radius: var( --cwc-border-radius );
+	background-color: var( --cwc-color-accent );
+	color: var( --cwc-color-background );
+	text-decoration: none;
+}
+
+.cwc-category-card {
+	box-sizing: border-box;
+	height: 100%;
+	overflow: hidden;
+	border: var( --cwc-border-width ) solid var( --cwc-color-border );
+	border-radius: var( --cwc-border-radius );
+	background-color: var( --cwc-color-background );
+}
+
+.cwc-category-card__link {
+	display: block;
+	color: inherit;
+	text-decoration: none;
+}
+
+.cwc-category-card__image {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.cwc-category-card__image--placeholder {
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	background-color: var( --cwc-color-border );
+}
+
+.cwc-carousel .swiper-button-prev,
+.cwc-carousel .swiper-button-next {
+	color: var( --cwc-color-accent );
+}
+
+.cwc-carousel .swiper-pagination-bullet-active {
+	background-color: var( --cwc-color-accent );
+}

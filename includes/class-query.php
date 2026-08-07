@@ -38,11 +38,18 @@ class CWC_Query {
 	 * @param array $args {
 	 *     Optional query arguments.
 	 *
-	 *     @type int|string|array $ids   Comma/whitespace-separated product IDs
-	 *                                   or an int[]; absent/null means "recent
-	 *                                   products".
-	 *     @type int              $limit Maximum number of products (0 yields
-	 *                                   an empty result).
+	 *     @type int|string|array $ids        Comma/whitespace-separated product
+	 *                                        IDs or an int[]; absent/null means
+	 *                                        "recent products".
+	 *     @type int              $limit      Maximum number of products (0 yields
+	 *                                        an empty result).
+	 * @type int              $category   Single product_cat term id (scoped
+	 *                                    primary mode, PQ-4).
+	 * @type int[]            $categories product_cat term ids; when non-empty,
+	 *                                    always filters as an IN list (PQ-5).
+	 * @type bool             $mix        Explicit flag kept for config parity;
+	 *                                    non-empty $categories filter regardless
+	 *                                    (PQ-5).
 	 * }
 	 * @return WC_Product[]
 	 */
@@ -50,8 +57,11 @@ class CWC_Query {
 		$args = wp_parse_args(
 			$args,
 			array(
-				'limit' => 8,
-				'ids'   => null,
+				'limit'      => 8,
+				'ids'        => null,
+				'category'   => 0,
+				'categories' => array(),
+				'mix'        => false,
 			)
 		);
 
@@ -93,6 +103,12 @@ class CWC_Query {
 			$query_args['orderby'] = 'post__in';
 		}
 
+		$category_filter = $this->category_filter( $args );
+
+		if ( ! empty( $category_filter ) ) {
+			$query_args['tax_query'] = $category_filter; // phpcs:ignore WordPress.DB.SlowDBQuery
+		}
+
 		/**
 		 * Filters the query arguments passed to wc_get_products().
 		 *
@@ -103,5 +119,104 @@ class CWC_Query {
 		$query_args = apply_filters( 'cwc_carousel_query_args', $query_args );
 
 		return wc_get_products( $query_args );
+	}
+
+	/**
+	 * Builds the product_cat tax_query from the selection arguments.
+	 *
+	 * A non-empty $categories list always filters products to those terms via a
+	 * single tax_query with the default IN operator — the list is never silently
+	 * dropped when mix is off (PQ-5); `mix` stays an explicit flag but is not a
+	 * precondition for the filter. Otherwise a single positive $category id
+	 * scopes the carousel to that one term (PQ-4). An empty sanitized selection
+	 * yields no filter. No raw SQL is used in either mode.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param array $args Query arguments (category, categories, mix).
+	 * @return array[] tax_query array (possibly empty).
+	 */
+	private function category_filter( array $args ): array {
+		$categories = array_values(
+			array_map(
+				'absint',
+				(array) $args['categories']
+			)
+		);
+		$categories = array_values(
+			array_filter(
+				$categories,
+				static function ( $term_id ) {
+					return $term_id > 0;
+				}
+			)
+		);
+
+		$category = absint( $args['category'] );
+
+		if ( ! empty( $categories ) ) {
+			return array(
+				array(
+					'taxonomy' => 'product_cat',
+					'field'    => 'term_id',
+					'terms'    => $categories,
+				),
+			);
+		}
+
+		if ( $category > 0 ) {
+			return array(
+				array(
+					'taxonomy' => 'product_cat',
+					'field'    => 'term_id',
+					'terms'    => array( $category ),
+				),
+			);
+		}
+
+		return array();
+	}
+
+	/**
+	 * Fetches product category terms for a category carousel.
+	 *
+	 * Keeps category-term data access in the query layer (D8). Terms are
+	 * fetched in the exact order of the supplied ids via orderby=include and
+	 * hidden terms are excluded, mirroring how the category carousel lists its
+	 * explicitly chosen categories.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param int[] $term_ids Sanitized positive product_cat term ids.
+	 * @return WP_Term[] Ordered category terms (may be empty).
+	 */
+	public function get_categories( array $term_ids = array() ): array {
+		$term_ids = array_values(
+			array_filter(
+				array_map( 'absint', $term_ids ),
+				static function ( $term_id ) {
+					return $term_id > 0;
+				}
+			)
+		);
+
+		if ( empty( $term_ids ) ) {
+			return array();
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => 'product_cat',
+				'include'    => $term_ids,
+				'hide_empty' => true,
+				'orderby'    => 'include',
+			)
+		);
+
+		if ( is_wp_error( $terms ) ) {
+			return array();
+		}
+
+		return $terms;
 	}
 }
