@@ -52,8 +52,11 @@ class CWC_Settings {
 	 *
 	 * Starts from the global defaults and whitelists the shortcode attributes
 	 * (unknown atts are dropped), so an explicitly supplied attribute overrides
-	 * the administrative default (CM-2). Each named instance resolves its own
-	 * config — nothing global is mutated (CM-4, SC-5).
+	 * the administrative default (CM-2). Shortcode attributes that are empty
+	 * strings are treated as "not provided" and fall through to the defaults —
+	 * shortcode_atts() fills absent attrs with "" so they must not override
+	 * the administrative values. Each named instance resolves its own config —
+	 * nothing global is mutated (CM-4, SC-5).
 	 *
 	 * @since 0.1.0
 	 *
@@ -62,6 +65,17 @@ class CWC_Settings {
 	 */
 	public function resolve( array $atts ): array {
 		$defaults = $this->defaults();
+
+		// shortcode_atts() fills attributes the shortcode does not set with ""
+		// (not null), so an empty string means "not provided": drop it so the
+		// administrative default applies. A string "0" is kept — count=0 still
+		// yields an empty carousel per CM-3.
+		$atts = array_filter(
+			$atts,
+			static function ( $value ) {
+				return '' !== $value;
+			}
+		);
 
 		$known = array(
 			'type'          => $defaults['type'],
