@@ -89,7 +89,10 @@
 		var slidesDesktop = numberOr( config.slides, DEFAULT_OPTIONS.slidesDesktop );
 		var gap           = numberOr( config.gap, DEFAULT_OPTIONS.spaceBetween );
 
-		return {
+		// Only a resolved `false` disables a control; `undefined` (legacy
+		// containers without data-cwc-config) keeps today's always-on look
+		// (FA-6), so DEFAULT_OPTIONS paths still get both controls.
+		var options = {
 			// With breakpointsBase defaulting to "window", breakpoints resolve
 			// against the viewport, but Swiper's default resizeObserver:true only
 			// watches the container element and skips re-evaluation when its width
@@ -98,14 +101,6 @@
 			resizeObserver: false,
 			slidesPerView: slidesMobile,
 			spaceBetween: gap,
-			navigation: {
-				nextEl: '.swiper-button-next',
-				prevEl: '.swiper-button-prev'
-			},
-			pagination: {
-				el: '.swiper-pagination',
-				clickable: true
-			},
 			breakpoints: {
 				768: {
 					slidesPerView: slidesTablet
@@ -115,6 +110,22 @@
 				}
 			}
 		};
+
+		if ( config.arrows !== false ) {
+			options.navigation = {
+				nextEl: '.swiper-button-next',
+				prevEl: '.swiper-button-prev'
+			};
+		}
+
+		if ( config.pagination !== false ) {
+			options.pagination = {
+				el: '.swiper-pagination',
+				clickable: true
+			};
+		}
+
+		return options;
 	}
 
 	/**

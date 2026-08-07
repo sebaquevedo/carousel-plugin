@@ -79,9 +79,14 @@ class CWC_Renderer {
 
 		$output .= '</div>';
 
-		$output .= '<div class="swiper-pagination"></div>';
-		$output .= '<div class="swiper-button-prev"></div>';
-		$output .= '<div class="swiper-button-next"></div>';
+		if ( ! empty( $config['pagination'] ) ) {
+			$output .= '<div class="swiper-pagination"></div>';
+		}
+
+		if ( ! empty( $config['arrows'] ) ) {
+			$output .= '<div class="swiper-button-prev"></div>';
+			$output .= '<div class="swiper-button-next"></div>';
+		}
 
 		$output .= '</div>';
 

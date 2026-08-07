@@ -189,6 +189,14 @@ class CWC_Admin {
 			$this->page_slug,
 			'cwc_carousel_main'
 		);
+
+		add_settings_field(
+			'cwc_controls',
+			__( 'Controls', 'cwc-carousel' ),
+			array( $this, 'render_controls_field' ),
+			$this->page_slug,
+			'cwc_carousel_main'
+		);
 	}
 
 	/**
@@ -340,12 +348,40 @@ class CWC_Admin {
 	public function render_buy_field() {
 		$current = $this->current();
 
-		$output = '<label><input type="checkbox" name="cwc_carousel_options[buy]" value="1"'
+		$output = '<label><input type="hidden" name="cwc_carousel_options[buy]" value="0" />'
+			. '<input type="checkbox" name="cwc_carousel_options[buy]" value="1"'
 			. checked( ! empty( $current['buy'] ), true, false ) . ' /> '
 			. esc_html__( 'Show the Buy button on product cards', 'cwc-carousel' ) . '</label><br />'
 			. '<label>' . esc_html__( 'Buy text', 'cwc-carousel' ) . ' '
 			. '<input type="text" name="cwc_carousel_options[buy_text]" value="' . esc_attr( $current['buy_text'] ) . '" />'
 			. '</label>';
+
+		// phpcs:ignore WordPress.Security.EscapeOutput -- checked() returns escaped HTML (core escaping function).
+		echo $output;
+	}
+
+	/**
+	 * Renders the arrows and pagination toggle checkboxes.
+	 *
+	 * Two independent boolean defaults ("Show arrows" / "Show pagination"),
+	 * each preceded by a hidden `value="0"` companion so an unchecked box posts
+	 * `'0'` (a native checkbox omits its key entirely when unchecked) and
+	 * sanitize_options() round-trips `false` losslessly (AS-4, D6).
+	 *
+	 * @since 0.1.0
+	 * @return void
+	 */
+	public function render_controls_field() {
+		$current = $this->current();
+
+		$output = '<label><input type="hidden" name="cwc_carousel_options[arrows]" value="0" />'
+			. '<input type="checkbox" name="cwc_carousel_options[arrows]" value="1"'
+			. checked( ! empty( $current['arrows'] ), true, false ) . ' /> '
+			. esc_html__( 'Show arrows', 'cwc-carousel' ) . '</label><br />'
+			. '<label><input type="hidden" name="cwc_carousel_options[pagination]" value="0" />'
+			. '<input type="checkbox" name="cwc_carousel_options[pagination]" value="1"'
+			. checked( ! empty( $current['pagination'] ), true, false ) . ' /> '
+			. esc_html__( 'Show pagination', 'cwc-carousel' ) . '</label>';
 
 		// phpcs:ignore WordPress.Security.EscapeOutput -- checked() returns escaped HTML (core escaping function).
 		echo $output;
@@ -489,9 +525,11 @@ class CWC_Admin {
 		$input = ( is_array( $input ) ) ? $input : array();
 		$built = $this->builtins();
 
-		$type = isset( $input['type'] ) ? $input['type'] : $built['type'];
-		$buy  = isset( $input['buy'] ) ? $input['buy'] : $built['buy'];
-		$text = isset( $input['buy_text'] ) ? $input['buy_text'] : $built['buy_text'];
+		$type       = isset( $input['type'] ) ? $input['type'] : $built['type'];
+		$arrows     = isset( $input['arrows'] ) ? $input['arrows'] : $built['arrows'];
+		$pagination = isset( $input['pagination'] ) ? $input['pagination'] : $built['pagination'];
+		$buy        = isset( $input['buy'] ) ? $input['buy'] : $built['buy'];
+		$text       = isset( $input['buy_text'] ) ? $input['buy_text'] : $built['buy_text'];
 
 		return array(
 			'type'          => ( 'category' === $type ) ? 'category' : 'product',
@@ -501,6 +539,8 @@ class CWC_Admin {
 			'slides_mobile' => $this->bound( $input, 'slides_mobile', 1, 12, $built['slides_mobile'] ),
 			'gap'           => $this->bound( $input, 'gap', 8, 64, $built['gap'] ),
 			'count'         => $this->bound( $input, 'count', 0, PHP_INT_MAX, $built['count'] ),
+			'arrows'        => $this->parse_bool( $arrows ),
+			'pagination'    => $this->parse_bool( $pagination ),
 			'buy'           => $this->parse_bool( $buy ),
 			'buy_text'      => $this->clean_text( $text, $built['buy_text'] ),
 		);
@@ -550,6 +590,8 @@ class CWC_Admin {
 			'slides_mobile' => 1,
 			'gap'           => 16,
 			'count'         => 8,
+			'arrows'        => true,
+			'pagination'    => true,
 			'buy'           => true,
 			'buy_text'      => 'Comprar',
 		);
