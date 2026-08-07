@@ -44,6 +44,7 @@ class CWC_Assets {
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_from_content' ), 20 );
 		add_action( 'wp_footer', array( $this, 'maybe_enqueue_from_render_flag' ), 10 );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 	}
 
 	/**
@@ -158,5 +159,40 @@ class CWC_Assets {
 
 		wp_enqueue_script( 'cwc-swiper' );
 		wp_enqueue_script( 'cwc-carousel-frontend' );
+	}
+
+	/**
+	 * Enqueues the admin uploader only on the Carousel settings screen.
+	 *
+	 * Runs on admin_enqueue_scripts but loads nothing on any other admin
+	 * screen (D7, FA-5): the screen hook suffix of the Carousel submenu is
+	 * `-page_cwc-carousel` (WooCommerce parent), and the page itself is gated
+	 * by the `manage_woocommerce` capability. wp_enqueue_media() primes the
+	 * wp.media library that admin.js drives; the script only hands the asset
+	 * the single hidden attachment-id input and preview fields, so no script
+	 * locals are needed.
+	 *
+	 * @since 0.1.0
+	 * @return void
+	 */
+	public function enqueue_admin_assets() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+		if ( ! $screen || ! is_string( $screen->id ) || false === strpos( $screen->id, 'cwc-carousel' ) ) {
+			return;
+		}
+
+		wp_enqueue_media();
+		wp_enqueue_script(
+			'cwc-carousel-admin',
+			CWC_URL . 'assets/js/admin.js',
+			array( 'jquery' ),
+			CWC_VERSION,
+			true
+		);
 	}
 }
