@@ -435,11 +435,13 @@ class CWC_Admin {
 			return;
 		}
 
-		check_admin_referer( $this->image_nonce_action, $this->image_nonce_field );
-
+		// Capability first (R1-W3): fail gracefully for unauthorized users
+		// instead of a hard wp-die from check_admin_referer.
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			return;
 		}
+
+		check_admin_referer( $this->image_nonce_action, $this->image_nonce_field );
 
 		$images = array_map( 'absint', wp_unslash( $_POST['cwc_cat_images'] ) );
 
@@ -451,6 +453,12 @@ class CWC_Admin {
 			$term = get_term( $term_id, 'product_cat' );
 
 			if ( ! $term instanceof WP_Term ) {
+				continue;
+			}
+
+			// Only accept an existing image attachment (R1-W2); anything else
+			// clears the override so the renderer falls back to the thumbnail.
+			if ( $attachment_id > 0 && ! wp_attachment_is_image( $attachment_id ) ) {
 				continue;
 			}
 
