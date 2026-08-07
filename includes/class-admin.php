@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin settings page: carousel globals.
+ * Admin settings page: carousel globals and per-category image overrides.
  *
  * @package CWC_Carousel
  * @since   0.1.0
@@ -11,12 +11,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Registers the Carousel settings page under WooCommerce.
+ * Registers the Carousel settings page under WooCommerce and two data paths.
  *
- * Global defaults are edited with the Settings API and stored as one
- * sanitized array in `cwc_carousel_options` with autoload disabled (AS-2);
- * `delete_option` fully resets them because CWC_Settings falls back to
- * its built-ins when the option is absent (CM-1).
+ * 1. Global defaults are edited with the Settings API and stored as one
+ *    sanitized array in `cwc_carousel_options` with autoload disabled (AS-2);
+ *    `delete_option` fully resets them because CWC_Settings falls back to
+ *    its built-ins when the option is absent (CM-1).
+ * 2. Per-category image overrides are stored as the `cwc_cat_image` term meta
+ *    key that CWC_Renderer reads at render time (AS-3). They are saved on
+ *    admin_init, guarded by a nonce and the `manage_woocommerce` capability,
+ *    so term side-effects never leak into the pure option sanitizer (D7).
  *
  * The page and all saves are gated by `manage_woocommerce` (AS-1).
  *
@@ -41,6 +45,33 @@ class CWC_Admin {
 	private $page_slug = 'cwc-carousel';
 
 	/**
+	 * Nonce action used when saving per-category image overrides.
+	 *
+	 * @since 0.1.0
+	 * @var string
+	 */
+	private $image_nonce_action = 'cwc_save_category_image';
+
+	/**
+	 * Name of the nonce field used when saving category image overrides.
+	 *
+	 * @since 0.1.0
+	 * @var string
+	 */
+	private $image_nonce_field = 'cwc_category_image_nonce';
+
+	/**
+	 * Term meta key holding the custom category image attachment id.
+	 *
+	 * Must match the renderer's lookup (CR-5) so an uploaded override is what
+	 * the category card actually shows (AS-3).
+	 *
+	 * @since 0.1.0
+	 * @var string
+	 */
+	private $meta_key = 'cwc_cat_image';
+
+	/**
 	 * Registers the admin hooks.
 	 *
 	 * @since 0.1.0
@@ -48,13 +79,14 @@ class CWC_Admin {
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_init', array( $this, 'save_category_images' ) );
 	}
 
 	/**
 	 * Adds the Carousel submenu page under the WooCommerce menu (AS-1).
 	 *
 	 * The page is gated by the `manage_woocommerce` capability via the menu
-	 * argument (WD-4).
+	 * argument; the save handlers repeat the same check (WD-4).
 	 *
 	 * @since 0.1.0
 	 * @return void
@@ -162,6 +194,10 @@ class CWC_Admin {
 	/**
 	 * Renders the page wrapper and the global settings form (AS-1).
 	 *
+	 * Echoes the settings form bound to the registered group and then the
+	 * per-category image override block inside the same form, so both submit
+	 * through the one options post and each carries its own nonce.
+	 *
 	 * @since 0.1.0
 	 * @return void
 	 */
@@ -181,6 +217,7 @@ class CWC_Admin {
 				settings_fields( $this->option_group );
 				do_settings_sections( $this->page_slug );
 				submit_button();
+				$this->render_category_images();
 				?>
 			</form>
 		</div>
@@ -315,13 +352,125 @@ class CWC_Admin {
 	}
 
 	/**
+	 * Renders the per-category custom image override group (AS-3).
+	 *
+	 * A row with a hidden attachment-id input, a preview, and an Upload button
+	 * renders for each chosen category. The hidden input carries the term id so
+	 * admin.js can drive wp.media per term. Saving is handled separately by
+	 * save_category_images() to keep term side-effects out of the sanitizer.
+	 *
+	 * @since 0.1.0
+	 * @return void
+	 */
+	public function render_category_images() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		$current  = $this->current();
+		$term_ids = array_map( 'absint', $current['categories'] );
+
+		if ( empty( $term_ids ) ) {
+			echo '<p>' . esc_html__( 'Select categories above to set a custom image per category.', 'cwc-carousel' ) . '</p>';
+			return;
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => 'product_cat',
+				'include'    => $term_ids,
+				'hide_empty' => false,
+			)
+		);
+
+		if ( empty( $terms ) || is_wp_error( $terms ) ) {
+			echo '<p>' . esc_html__( 'No selected categories were found.', 'cwc-carousel' ) . '</p>';
+			return;
+		}
+
+		wp_nonce_field( $this->image_nonce_action, $this->image_nonce_field );
+
+		echo '<h2>' . esc_html__( 'Category images', 'cwc-carousel' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Optionally set a custom image that overrides the WooCommerce category thumbnail.', 'cwc-carousel' ) . '</p>';
+
+		foreach ( $terms as $term ) {
+			if ( ! $term instanceof WP_Term ) {
+				continue;
+			}
+
+			$image_id = (int) get_term_meta( $term->term_id, $this->meta_key, true );
+			$preview  = ( $image_id > 0 ) ? wp_get_attachment_image( $image_id, 'thumbnail' ) : '';
+
+			printf(
+				'<div class="cwc-category-image-row" data-term-id="%1$d">'
+				. '<span class="cwc-cat-image-preview">%2$s</span>'
+				. '<input type="hidden" name="cwc_cat_images[%1$d]" class="cwc-cat-image-id" value="%3$d" />'
+				. '<button type="button" class="button cwc-cat-image-upload">%4$s</button>'
+				. '<button type="button" class="button-link-delete cwc-cat-image-remove">%5$s</button>'
+				. '<p class="cwc-cat-image-term">%6$s</p>'
+				. '</div>',
+				(int) $term->term_id,
+				$preview, // phpcs:ignore WordPress.Security.EscapeOutput -- wp_get_attachment_image() escapes internally.
+				absint( $image_id ),
+				esc_html__( 'Choose image', 'cwc-carousel' ),
+				esc_html__( 'Remove image', 'cwc-carousel' ),
+				esc_html( $term->name )
+			);
+		}
+	}
+
+	/**
+	 * Persists per-category image overrides submitted with the settings form.
+	 *
+	 * Runs on admin_init so it sees the same POST the Settings API processes;
+	 * the form passes a dedicated nonce and capability so term writes never
+	 * cross into the pure option sanitizer (D7). An empty value clears the
+	 * override, the uploads the value comes from the media library.
+	 *
+	 * @since 0.1.0
+	 * @return void
+	 */
+	public function save_category_images() {
+		if ( ! isset( $_POST['cwc_cat_images'] ) || ! is_array( $_POST['cwc_cat_images'] ) ) {
+			return;
+		}
+
+		check_admin_referer( $this->image_nonce_action, $this->image_nonce_field );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		$images = array_map( 'absint', wp_unslash( $_POST['cwc_cat_images'] ) );
+
+		foreach ( $images as $term_id => $attachment_id ) {
+			if ( $term_id <= 0 ) {
+				continue;
+			}
+
+			$term = get_term( $term_id, 'product_cat' );
+
+			if ( ! $term instanceof WP_Term ) {
+				continue;
+			}
+
+			if ( $attachment_id > 0 ) {
+				update_term_meta( $term_id, $this->meta_key, $attachment_id );
+			} else {
+				delete_term_meta( $term_id, $this->meta_key );
+			}
+		}
+	}
+
+	/**
 	 * Sanitizes the submitted global option into one well-formed array.
 	 *
 	 * Every stored value is validated/coerced here, exactly once (AS-2):
 	 * slides 1-12, gap 8-64, count int ≥ 0, categories as positive ids, buy as
 	 * a boolean, buy_text as text, type within {product, category}. Unknown or
 	 * invalid keys are normalized to their defaults, never resurrected from the
-	 * raw post (CM-2).
+	 * raw post (CM-2). The result contains only global option keys — category
+	 * image overrides live in term meta via save_category_images().
 	 *
 	 * @since 0.1.0
 	 *
