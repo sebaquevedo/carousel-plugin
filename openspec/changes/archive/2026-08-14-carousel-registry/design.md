@@ -114,3 +114,17 @@ if ( ! is_array( $registry ) ) {        // absent ⇒ seed exactly once; add_opt
 ## Open Questions
 
 - [ ] None blocking.
+
+## Archive Note (from verify-report, 2026-08-14)
+
+Verified deviations recorded at archive time, per verify-report SUGGESTION notes:
+
+1. **Corrupt-registry repair**: `cwc_carousel_boot()` repairs a present-but-corrupt
+   non-array `cwc_carousel_registry` with `update_option()` (design §5 showed only
+   the absent case). Strictly an improvement — prevents a broken value being
+   re-attempted every request; consistent with CM-7's non-array handling and PB-4
+   idempotency.
+2. **`name` normalization in `resolve()`**: `resolve()` normalizes the shortcode
+   `name` via `sanitize_title` + underscore folding (parity with admin `slugify()`,
+   AS-8), slightly beyond the literal "pop name" text but matching its intent;
+   unknown names still fall back to `default` (verified R4).
