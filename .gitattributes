@@ -1,0 +1,10 @@
+# Normalize PHP line endings to LF in the repository and on checkout.
+# WPCS Generic.Files.LineEndings flags CRLF working-tree files, so every
+# checked-out PHP file must be LF for `composer phpcs` to stay green.
+# CSS/JS assets are linted by the same sniff and must stay LF too.
+*.php text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+
+# Keep this file itself canonical.
+.gitattributes text eol=lf
