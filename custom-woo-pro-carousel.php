@@ -138,6 +138,7 @@ function cwc_carousel_boot() {
 		if ( false === $cwc_registry ) {
 			add_option( 'cwc_carousel_registry', $cwc_seed, '', false );
 		} else {
+			error_log( 'CWC_Carousel: repaired a corrupt (non-array) cwc_carousel_registry option by reseeding.' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Deliberate observability for a silent-degradation repair (R4-01).
 			update_option( 'cwc_carousel_registry', $cwc_seed, false );
 		}
 	}
