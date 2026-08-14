@@ -85,7 +85,7 @@ class CWC_Shortcode {
 		} else {
 			if ( '' !== $atts['ids'] ) {
 				$query_args = array(
-					'ids' => $this->sanitize_ids( $atts['ids'] ),
+					'ids' => $settings->sanitize_ids( $atts['ids'] ),
 				);
 			} else {
 				$query_args = array(
@@ -100,29 +100,5 @@ class CWC_Shortcode {
 		}
 
 		return $renderer->render( $config, $items );
-	}
-
-	/**
-	 * Sanitizes a raw comma/whitespace-separated product ID list.
-	 *
-	 * Matches the CWC_Query rules (PQ-2): wp_parse_id_list() first, then
-	 * absint(), dropping values <= 0 and re-indexing the result.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $raw_ids Raw ID list from the shortcode attribute.
-	 * @return int[] Sanitized product IDs (may be empty when all invalid).
-	 */
-	private function sanitize_ids( string $raw_ids ): array {
-		$ids = array_map( 'absint', wp_parse_id_list( $raw_ids ) );
-
-		return array_values(
-			array_filter(
-				$ids,
-				static function ( $product_id ) {
-					return $product_id > 0;
-				}
-			)
-		);
 	}
 }
