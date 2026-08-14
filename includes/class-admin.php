@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin settings page: carousel globals and per-category image overrides.
+ * Admin settings page: carousel registry and per-category image overrides.
  *
  * @package CWC_Carousel
  * @since   0.1.0
@@ -11,12 +11,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Registers the Carousel settings page under WooCommerce and two data paths.
+ * Registers the Carousel settings page under WooCommerce and the two data paths.
  *
- * 1. Global defaults are edited with the Settings API and stored as one
- *    sanitized array in `cwc_carousel_options` with autoload disabled (AS-2);
- *    `delete_option` fully resets them because CWC_Settings falls back to
- *    its built-ins when the option is absent (CM-1).
+ * 1. Named carousel instances live in one sanitized keyed option,
+ *    `cwc_carousel_registry` ({ slug => full_config }, autoload off, AS-5).
+ *    Edits to an existing instance go through the Settings API and the
+ *    per-slug `sanitize_registry()` callback; create and delete run on
+ *    admin_init through handle_registry_actions() — mirroring
+ *    save_category_images() (D7) — so the option sanitizer stays a pure
+ *    per-slug edit surface (D4).
  * 2. Per-category image overrides are stored as the `cwc_cat_image` term meta
  *    key that CWC_Renderer reads at render time (AS-3). They are saved on
  *    admin_init, guarded by a nonce and the `manage_woocommerce` capability,
@@ -61,6 +64,30 @@ class CWC_Admin {
 	private $image_nonce_field = 'cwc_category_image_nonce';
 
 	/**
+	 * Nonce action used when creating a new registry instance.
+	 *
+	 * @since 0.1.0
+	 * @var string
+	 */
+	private $create_nonce_action = 'cwc_create_carousel';
+
+	/**
+	 * Nonce action used when deleting a registry instance.
+	 *
+	 * @since 0.1.0
+	 * @var string
+	 */
+	private $delete_nonce_action = 'cwc_delete_carousel';
+
+	/**
+	 * Name of the nonce field used by the create/delete forms.
+	 *
+	 * @since 0.1.0
+	 * @var string
+	 */
+	private $registry_nonce_field = 'cwc_registry_nonce';
+
+	/**
 	 * Term meta key holding the custom category image attachment id.
 	 *
 	 * Must match the renderer's lookup (CR-5) so an uploaded override is what
@@ -80,6 +107,7 @@ class CWC_Admin {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'save_category_images' ) );
+		add_action( 'admin_init', array( $this, 'handle_registry_actions' ) );
 	}
 
 	/**
@@ -103,11 +131,14 @@ class CWC_Admin {
 	}
 
 	/**
-	 * Registers the one option, its sanitize callback, and the settings fields.
+	 * Registers the registry option and its per-slug sanitize callback.
 	 *
-	 * `cwc_carousel_options` is stored with autoload disabled and sanitized by
-	 * a single callback (AS-2). The screen page slug doubles as the Settings
-	 * API page id after add_settings_section().
+	 * `cwc_carousel_registry` is stored with autoload disabled and sanitized by
+	 * a single callback (AS-5). The static Settings API section/fields are gone:
+	 * the editor renders the same fields inline, prefixed per instance
+	 * (`cwc_carousel_registry[slug][key]`). The legacy `cwc_carousel_options`
+	 * option is no longer registered here — it stays untouched as the rollback
+	 * path (PB-4) and is only ever read by CWC_Settings.
 	 *
 	 * @since 0.1.0
 	 * @return void
@@ -115,12 +146,12 @@ class CWC_Admin {
 	public function register_settings() {
 		register_setting(
 			$this->option_group,
-			'cwc_carousel_options',
+			'cwc_carousel_registry',
 			array(
 				'type'              => 'array',
 				'autoload'          => false,
 				'default'           => array(),
-				'sanitize_callback' => array( $this, 'sanitize_options' ),
+				'sanitize_callback' => array( $this, 'sanitize_registry' ),
 			)
 		);
 
@@ -134,77 +165,14 @@ class CWC_Admin {
 				return 'manage_woocommerce';
 			}
 		);
-
-		add_settings_section(
-			'cwc_carousel_main',
-			__( 'Carousel defaults', 'cwc-carousel' ),
-			array( $this, 'render_main_section' ),
-			$this->page_slug
-		);
-
-		add_settings_field(
-			'cwc_type',
-			__( 'Carousel type', 'cwc-carousel' ),
-			array( $this, 'render_type_field' ),
-			$this->page_slug,
-			'cwc_carousel_main'
-		);
-
-		add_settings_field(
-			'cwc_categories',
-			__( 'Categories', 'cwc-carousel' ),
-			array( $this, 'render_categories_field' ),
-			$this->page_slug,
-			'cwc_carousel_main'
-		);
-
-		add_settings_field(
-			'cwc_slides',
-			__( 'Slides', 'cwc-carousel' ),
-			array( $this, 'render_slides_field' ),
-			$this->page_slug,
-			'cwc_carousel_main'
-		);
-
-		add_settings_field(
-			'cwc_gap',
-			__( 'Gap (px)', 'cwc-carousel' ),
-			array( $this, 'render_gap_field' ),
-			$this->page_slug,
-			'cwc_carousel_main'
-		);
-
-		add_settings_field(
-			'cwc_count',
-			__( 'Maximum items', 'cwc-carousel' ),
-			array( $this, 'render_count_field' ),
-			$this->page_slug,
-			'cwc_carousel_main'
-		);
-
-		add_settings_field(
-			'cwc_buy',
-			__( 'Buy button', 'cwc-carousel' ),
-			array( $this, 'render_buy_field' ),
-			$this->page_slug,
-			'cwc_carousel_main'
-		);
-
-		add_settings_field(
-			'cwc_controls',
-			__( 'Controls', 'cwc-carousel' ),
-			array( $this, 'render_controls_field' ),
-			$this->page_slug,
-			'cwc_carousel_main'
-		);
 	}
 
 	/**
-	 * Renders the page wrapper and the global settings form (AS-1).
+	 * Renders the page by routing on the `cwc_action` query arg (AS-6, AS-7).
 	 *
-	 * Echoes the settings form bound to the registered group and then the
-	 * per-category image override block inside the same form, so both submit
-	 * through the one options post and each carries its own nonce.
+	 * No `cwc_action` renders the list; `edit`/`create` render the per-instance
+	 * editor; `delete` renders the confirmation. Unknown values fall back to
+	 * the list. The whole page stays gated by `manage_woocommerce` (AS-1).
 	 *
 	 * @since 0.1.0
 	 * @return void
@@ -214,18 +182,276 @@ class CWC_Admin {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page routing; state changes carry nonces.
+		$action = sanitize_key( (string) wp_unslash( $_GET['cwc_action'] ?? '' ) );
+
+		if ( 'edit' === $action || 'create' === $action ) {
+			$this->render_editor( $action );
+		} elseif ( 'delete' === $action ) {
+			$this->render_delete_confirm();
+		} else {
+			$this->render_list();
+		}
+	}
+
+	/**
+	 * Renders the list of registered instances (AS-6).
+	 *
+	 * Every instance renders a row with its slug, type, slide ramp, controls
+	 * and max items, plus Edit/Delete actions. The reserved `default` instance
+	 * appears without delete (it is not deletable or renamable, AS-7).
+	 *
+	 * @since 0.1.0
+	 * @return void
+	 */
+	public function render_list() {
+		$settings   = new CWC_Settings();
+		$registry   = $settings->registry();
+		$create_url = add_query_arg(
+			array(
+				'page'       => $this->page_slug,
+				'cwc_action' => 'create',
+			),
+			admin_url( 'admin.php' )
+		);
+
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Carousel', 'cwc-carousel' ); ?></h1>
-			<p>
-				<?php esc_html_e( 'Configure the default behavior of every Shortcode Carousel.', 'cwc-carousel' ); ?>
-			</p>
-			<form method="post" action="options.php">
+			<h1><?php esc_html_e( 'Carousels', 'cwc-carousel' ); ?></h1>
+			<?php settings_errors(); ?>
+			<p><?php esc_html_e( 'Each named carousel holds its own full configuration. Render one with [cwc_carousel name="slug"]; without a name the reserved "default" instance applies.', 'cwc-carousel' ); ?></p>
+			<p><a href="<?php echo esc_url( $create_url ); ?>" class="button button-primary"><?php esc_html_e( 'Add new carousel', 'cwc-carousel' ); ?></a></p>
+
+			<?php if ( empty( $registry ) ) : ?>
+				<p><?php esc_html_e( 'No carousels registered yet.', 'cwc-carousel' ); ?></p>
+			<?php else : ?>
+				<table class="widefat striped">
+					<thead>
+						<tr>
+							<th scope="col"><?php esc_html_e( 'Name', 'cwc-carousel' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Type', 'cwc-carousel' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Slides (desktop / tablet / mobile)', 'cwc-carousel' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Controls', 'cwc-carousel' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Max items', 'cwc-carousel' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Actions', 'cwc-carousel' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $registry as $slug => $instance ) : ?>
+							<?php
+							if ( ! is_array( $instance ) ) {
+								continue;
+							}
+
+							$slug       = (string) $slug;
+							$config     = $this->instance_current( $slug );
+							$edit_url   = add_query_arg(
+								array(
+									'page'       => $this->page_slug,
+									'cwc_action' => 'edit',
+									'slug'       => $slug,
+								),
+								admin_url( 'admin.php' )
+							);
+							$delete_url = add_query_arg(
+								array(
+									'page'       => $this->page_slug,
+									'cwc_action' => 'delete',
+									'slug'       => $slug,
+								),
+								admin_url( 'admin.php' )
+							);
+
+							$controls = array();
+							if ( $config['arrows'] ) {
+								$controls[] = __( 'Arrows', 'cwc-carousel' );
+							}
+							if ( $config['pagination'] ) {
+								$controls[] = __( 'Pagination', 'cwc-carousel' );
+							}
+							?>
+							<tr>
+								<td><strong><?php echo esc_html( $slug ); ?></strong></td>
+								<td><?php echo ( 'category' === $config['type'] ) ? esc_html__( 'Categories', 'cwc-carousel' ) : esc_html__( 'Products', 'cwc-carousel' ); ?></td>
+								<td><?php echo esc_html( $config['slides'] . ' / ' . $config['slides_tablet'] . ' / ' . $config['slides_mobile'] ); ?></td>
+								<td><?php echo esc_html( $controls ? implode( ', ', $controls ) : __( 'None', 'cwc-carousel' ) ); ?></td>
+								<td><?php echo esc_html( (string) $config['count'] ); ?></td>
+								<td>
+									<a href="<?php echo esc_url( $edit_url ); ?>"><?php esc_html_e( 'Edit', 'cwc-carousel' ); ?></a>
+									<?php if ( 'default' === $slug ) : ?>
+										<span class="description"><?php esc_html_e( '(reserved — not deletable or renamable)', 'cwc-carousel' ); ?></span>
+									<?php else : ?>
+										| <a href="<?php echo esc_url( $delete_url ); ?>"><?php esc_html_e( 'Delete', 'cwc-carousel' ); ?></a>
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Renders the per-instance editor for `edit` or `create` (AS-7).
+	 *
+	 * The field renderers are reused with a per-instance name prefix
+	 * (`cwc_carousel_registry[slug][key]`, or `... [__new__][key]` while
+	 * creating). Edit posts to options.php through the Settings API; create
+	 * posts back to this page so handle_registry_actions() can slugify and
+	 * write the new key without ever overwriting an existing one (AS-8).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $mode `edit` or `create`.
+	 * @return void
+	 */
+	public function render_editor( string $mode ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page routing; the edit form carries the Settings API nonce, create carries wp_nonce_field.
+		$slug = isset( $_GET['slug'] ) ? $this->slugify( sanitize_text_field( wp_unslash( $_GET['slug'] ) ) ) : '';
+
+		if ( 'edit' === $mode ) {
+			$registry = ( new CWC_Settings() )->registry();
+
+			if ( '' === $slug || ( 'default' !== $slug && ! isset( $registry[ $slug ] ) ) ) {
+				$this->render_list();
+				return;
+			}
+		}
+
+		if ( 'edit' === $mode ) {
+			$current = $this->instance_current( $slug );
+		} else {
+			// The create form posts back to this page, so a rejected submission
+			// re-renders on the same request with $_POST still populated.
+			// Re-fill the form from the posted `__new__` values so the user can
+			// correct and resubmit instead of silently reverting to the
+			// "default" instance (create-form data-loss fix). A first load has
+			// no posted `__new__` and keeps the "default" instance pre-fill.
+			$defaults = $this->instance_current( 'default' );
+			$posted   = ( isset( $_POST['cwc_carousel_registry']['__new__'] ) && is_array( $_POST['cwc_carousel_registry']['__new__'] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Read-only create re-render after a rejected submission; the nonce-verified handler wrote nothing on rejection.
+				? wp_unslash( $_POST['cwc_carousel_registry']['__new__'] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only create re-render after a rejected submission; every value is escaped on output by the field renderers below.
+				: array();
+
+			if ( empty( $posted ) ) {
+				// First load: no posted `__new__` keeps the "default" instance pre-fill.
+				$current = $defaults;
+			} else {
+				// Rejected submission: re-fill from the posted `__new__` values.
+				// wp_parse_args() alone would let raw POST strings reach the
+				// int-typed render_number() parameter (TypeError on PHP 8 when a
+				// numeric field is empty/non-numeric) and would silently re-select
+				// the default's categories when the multi-select posts no key at
+				// all; coerce both before rendering.
+				$current = wp_parse_args( $posted, $defaults );
+
+				// Coerce numeric fields with the exact same clamp bound() applies
+				// on save, so the re-render shows precisely what a successful
+				// save would persist (empty -> absint 0 -> clamped to the field
+				// minimum). Non-scalar posted values (crafted multi-value
+				// fields) fall back to the default and never reach absint().
+				$numeric_bounds = array(
+					'slides'        => array( 1, 12 ),
+					'slides_tablet' => array( 1, 12 ),
+					'slides_mobile' => array( 1, 12 ),
+					'gap'           => array( 8, 64 ),
+					'count'         => array( 0, PHP_INT_MAX ),
+				);
+
+				foreach ( $numeric_bounds as $numeric_key => $range ) {
+					$current[ $numeric_key ] = is_scalar( $current[ $numeric_key ] )
+						? $this->bound( $current, $numeric_key, $range[0], $range[1], $defaults[ $numeric_key ] )
+						: $defaults[ $numeric_key ];
+				}
+
+				$current['categories'] = isset( $posted['categories'] )
+					? array_map( 'absint', (array) $posted['categories'] )
+					: array();
+			}
+		}
+		$prefix = ( 'edit' === $mode ) ? 'cwc_carousel_registry[' . $slug . ']' : 'cwc_carousel_registry[__new__]';
+
+		$action_url = ( 'edit' === $mode )
+			? admin_url( 'options.php' )
+			: add_query_arg(
+				array(
+					'page'       => $this->page_slug,
+					'cwc_action' => 'create',
+				),
+				admin_url( 'admin.php' )
+			);
+
+		$heading = ( 'edit' === $mode )
+			? sprintf(
+				/* translators: %s: instance slug. */
+				__( 'Edit carousel: %s', 'cwc-carousel' ),
+				$slug
+			)
+			: __( 'New carousel', 'cwc-carousel' );
+
+		?>
+		<div class="wrap">
+			<h1><?php echo esc_html( $heading ); ?></h1>
+			<?php settings_errors(); ?>
+			<p><a href="<?php echo esc_url( add_query_arg( 'page', $this->page_slug, admin_url( 'admin.php' ) ) ); ?>">&larr; <?php esc_html_e( 'Back to carousels', 'cwc-carousel' ); ?></a></p>
+
+			<form method="post" action="<?php echo esc_url( $action_url ); ?>">
 				<?php
-				settings_fields( $this->option_group );
-				do_settings_sections( $this->page_slug );
+				if ( 'edit' === $mode ) {
+					settings_fields( $this->option_group );
+				} else {
+					echo '<input type="hidden" name="cwc_registry_action" value="create" />';
+					wp_nonce_field( $this->create_nonce_action, $this->registry_nonce_field );
+
+					// Re-fill the name with the rejected submission so the user
+					// can correct it; a first load has no POST and stays empty.
+					$posted_name = isset( $_POST['cwc_new_slug'] ) ? wp_unslash( $_POST['cwc_new_slug'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only create re-render after a rejected submission; escaped on output with esc_attr().
+
+					echo '<p><label for="cwc_new_slug">' . esc_html__( 'Name', 'cwc-carousel' ) . ' </label>'
+						. '<input type="text" id="cwc_new_slug" name="cwc_new_slug" maxlength="40" value="' . esc_attr( $posted_name ) . '" /></p>';
+					echo '<p class="description">' . esc_html__( 'Lowercase letters, numbers and hyphens. This is the value of the name="…" attribute in [cwc_carousel].', 'cwc-carousel' ) . '</p>';
+				}
+				?>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Carousel type', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_type_field( $prefix, $current ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Categories', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_categories_field( $prefix, $current ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Slides', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_slides_field( $prefix, $current ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Gap (px)', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_gap_field( $prefix, $current ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Maximum items', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_count_field( $prefix, $current ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Buy button', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_buy_field( $prefix, $current ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Controls', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_controls_field( $prefix, $current ); ?></td>
+					</tr>
+				</table>
+				<?php
 				submit_button();
-				$this->render_category_images();
+
+				// Per-category image overrides belong to the instance being
+				// edited (its selected categories drive which terms can get an
+				// override); create has no persisted categories yet (AS-3).
+				if ( 'edit' === $mode ) {
+					$this->render_category_images( $current['categories'] );
+				}
 				?>
 			</form>
 		</div>
@@ -233,26 +459,66 @@ class CWC_Admin {
 	}
 
 	/**
-	 * Intro text for the global settings section.
+	 * Renders the delete confirmation for one instance (AS-7).
+	 *
+	 * Warns that pages referencing the removed slug fall back to the reserved
+	 * `default` instance (never fatal, CM-8). The reserved `default` is never
+	 * offered for deletion (AS-7, AS-8).
 	 *
 	 * @since 0.1.0
 	 * @return void
 	 */
-	public function render_main_section() {
-		echo '<p>' . esc_html__( 'These values apply when a shortcode does not override them.', 'cwc-carousel' ) . '</p>';
+	public function render_delete_confirm() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page routing; the delete form carries wp_nonce_field.
+		$slug     = isset( $_GET['slug'] ) ? $this->slugify( sanitize_text_field( wp_unslash( $_GET['slug'] ) ) ) : '';
+		$registry = ( new CWC_Settings() )->registry();
+
+		if ( '' === $slug || 'default' === $slug || ! isset( $registry[ $slug ] ) ) {
+			$this->render_list();
+			return;
+		}
+
+		$list_url = add_query_arg( 'page', $this->page_slug, admin_url( 'admin.php' ) );
+
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Delete carousel', 'cwc-carousel' ); ?></h1>
+			<p>
+				<?php
+				printf(
+					/* translators: %s: instance slug. */
+					esc_html__( 'You are about to delete the "%s" carousel.', 'cwc-carousel' ),
+					'<strong>' . esc_html( $slug ) . '</strong>'
+				);
+				?>
+			</p>
+			<p><?php esc_html_e( 'Pages and shortcodes that reference this name will fall back to the reserved "default" carousel — they keep rendering and never fail.', 'cwc-carousel' ); ?></p>
+			<form method="post" action="<?php echo esc_url( $list_url ); ?>">
+				<input type="hidden" name="cwc_registry_action" value="delete" />
+				<input type="hidden" name="cwc_delete_slug" value="<?php echo esc_attr( $slug ); ?>" />
+				<?php wp_nonce_field( $this->delete_nonce_action, $this->registry_nonce_field ); ?>
+				<p>
+					<button type="submit" class="button button-link-delete"><?php esc_html_e( 'Delete', 'cwc-carousel' ); ?></button>
+					<a href="<?php echo esc_url( $list_url ); ?>" class="button"><?php esc_html_e( 'Cancel', 'cwc-carousel' ); ?></a>
+				</p>
+			</form>
+		</div>
+		<?php
 	}
 
 	/**
 	 * Renders the type select field.
 	 *
 	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
 	 * @return void
 	 */
-	public function render_type_field() {
-		$current  = $this->current();
+	public function render_type_field( string $prefix, array $current ) {
 		$selected = ( 'category' === $current['type'] ) ? 'category' : 'product';
 
-		echo '<select name="cwc_carousel_options[type]">';
+		echo '<select name="' . esc_attr( $prefix ) . '[type]">';
 		echo '<option value="product"' . selected( $selected, 'product', false ) . '>' . esc_html__( 'Products', 'cwc-carousel' ) . '</option>';
 		echo '<option value="category"' . selected( $selected, 'category', false ) . '>' . esc_html__( 'Categories', 'cwc-carousel' ) . '</option>';
 		echo '</select>';
@@ -266,10 +532,12 @@ class CWC_Admin {
 	 * mix seed and the category-card set.
 	 *
 	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
 	 * @return void
 	 */
-	public function render_categories_field() {
-		$current  = $this->current();
+	public function render_categories_field( string $prefix, array $current ) {
 		$selected = array_map( 'absint', $current['categories'] );
 		$terms    = get_terms(
 			array(
@@ -283,7 +551,7 @@ class CWC_Admin {
 			return;
 		}
 
-		echo '<select name="cwc_carousel_options[categories][]" multiple="multiple" size="6" class="cwc-categories-select">';
+		echo '<select name="' . esc_attr( $prefix ) . '[categories][]" multiple="multiple" size="6" class="cwc-categories-select">';
 		foreach ( $terms as $term ) {
 			if ( ! $term instanceof WP_Term ) {
 				continue;
@@ -300,17 +568,18 @@ class CWC_Admin {
 	 * Renders the desktop/tablet/mobile slides number fields (1-12).
 	 *
 	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
 	 * @return void
 	 */
-	public function render_slides_field() {
-		$current = $this->current();
-
+	public function render_slides_field( string $prefix, array $current ) {
 		$output = esc_html__( 'Desktop', 'cwc-carousel' ) . ' '
-			. $this->render_number( 'cwc_carousel_options[slides]', $current['slides'], 1, 12 ) . '<br />'
+			. $this->render_number( $prefix . '[slides]', $current['slides'], 1, 12 ) . '<br />'
 			. esc_html__( 'Tablet', 'cwc-carousel' ) . ' '
-			. $this->render_number( 'cwc_carousel_options[slides_tablet]', $current['slides_tablet'], 1, 12 ) . '<br />'
+			. $this->render_number( $prefix . '[slides_tablet]', $current['slides_tablet'], 1, 12 ) . '<br />'
 			. esc_html__( 'Mobile', 'cwc-carousel' ) . ' '
-			. $this->render_number( 'cwc_carousel_options[slides_mobile]', $current['slides_mobile'], 1, 12 );
+			. $this->render_number( $prefix . '[slides_mobile]', $current['slides_mobile'], 1, 12 );
 
 		// phpcs:ignore WordPress.Security.EscapeOutput -- render_number() escapes every attribute; labels escaped above.
 		echo $output;
@@ -320,22 +589,26 @@ class CWC_Admin {
 	 * Renders the gap field (8-64 px).
 	 *
 	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
 	 * @return void
 	 */
-	public function render_gap_field() {
-		$current = $this->current();
-		echo $this->render_number( 'cwc_carousel_options[gap]', $current['gap'], 8, 64 ); // phpcs:ignore WordPress.Security.EscapeOutput -- render_number() returns escaped HTML.
+	public function render_gap_field( string $prefix, array $current ) {
+		echo $this->render_number( $prefix . '[gap]', $current['gap'], 8, 64 ); // phpcs:ignore WordPress.Security.EscapeOutput -- render_number() returns escaped HTML.
 	}
 
 	/**
 	 * Renders the count field (0+).
 	 *
 	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
 	 * @return void
 	 */
-	public function render_count_field() {
-		$current = $this->current();
-		echo $this->render_number( 'cwc_carousel_options[count]', $current['count'], 0, PHP_INT_MAX ); // phpcs:ignore WordPress.Security.EscapeOutput -- render_number() returns escaped HTML.
+	public function render_count_field( string $prefix, array $current ) {
+		echo $this->render_number( $prefix . '[count]', $current['count'], 0, PHP_INT_MAX ); // phpcs:ignore WordPress.Security.EscapeOutput -- render_number() returns escaped HTML.
 		echo '<p class="description">' . esc_html__( '0 renders an empty carousel.', 'cwc-carousel' ) . '</p>';
 	}
 
@@ -343,17 +616,18 @@ class CWC_Admin {
 	 * Renders the buy toggle and label text fields.
 	 *
 	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
 	 * @return void
 	 */
-	public function render_buy_field() {
-		$current = $this->current();
-
-		$output = '<label><input type="hidden" name="cwc_carousel_options[buy]" value="0" />'
-			. '<input type="checkbox" name="cwc_carousel_options[buy]" value="1"'
+	public function render_buy_field( string $prefix, array $current ) {
+		$output = '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[buy]" value="0" />'
+			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[buy]" value="1"'
 			. checked( ! empty( $current['buy'] ), true, false ) . ' /> '
 			. esc_html__( 'Show the Buy button on product cards', 'cwc-carousel' ) . '</label><br />'
 			. '<label>' . esc_html__( 'Buy text', 'cwc-carousel' ) . ' '
-			. '<input type="text" name="cwc_carousel_options[buy_text]" value="' . esc_attr( $current['buy_text'] ) . '" />'
+			. '<input type="text" name="' . esc_attr( $prefix ) . '[buy_text]" value="' . esc_attr( $current['buy_text'] ) . '" />'
 			. '</label>';
 
 		// phpcs:ignore WordPress.Security.EscapeOutput -- checked() returns escaped HTML (core escaping function).
@@ -366,20 +640,21 @@ class CWC_Admin {
 	 * Two independent boolean defaults ("Show arrows" / "Show pagination"),
 	 * each preceded by a hidden `value="0"` companion so an unchecked box posts
 	 * `'0'` (a native checkbox omits its key entirely when unchecked) and
-	 * sanitize_options() round-trips `false` losslessly (AS-4, D6).
+	 * sanitize_instance() round-trips `false` losslessly (AS-4, D6).
 	 *
 	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
 	 * @return void
 	 */
-	public function render_controls_field() {
-		$current = $this->current();
-
-		$output = '<label><input type="hidden" name="cwc_carousel_options[arrows]" value="0" />'
-			. '<input type="checkbox" name="cwc_carousel_options[arrows]" value="1"'
+	public function render_controls_field( string $prefix, array $current ) {
+		$output = '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[arrows]" value="0" />'
+			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[arrows]" value="1"'
 			. checked( ! empty( $current['arrows'] ), true, false ) . ' /> '
 			. esc_html__( 'Show arrows', 'cwc-carousel' ) . '</label><br />'
-			. '<label><input type="hidden" name="cwc_carousel_options[pagination]" value="0" />'
-			. '<input type="checkbox" name="cwc_carousel_options[pagination]" value="1"'
+			. '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[pagination]" value="0" />'
+			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[pagination]" value="1"'
 			. checked( ! empty( $current['pagination'] ), true, false ) . ' /> '
 			. esc_html__( 'Show pagination', 'cwc-carousel' ) . '</label>';
 
@@ -396,14 +671,23 @@ class CWC_Admin {
 	 * save_category_images() to keep term side-effects out of the sanitizer.
 	 *
 	 * @since 0.1.0
+	 *
+	 * @param array|null $categories Optional category ids for the edited
+	 *                               instance; when null the legacy global
+	 *                               option drives the list (fallback).
 	 * @return void
 	 */
-	public function render_category_images() {
+	public function render_category_images( $categories = null ) {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			return;
 		}
 
-		$current  = $this->current();
+		$current = $this->current();
+
+		if ( is_array( $categories ) ) {
+			$current['categories'] = $categories;
+		}
+
 		$term_ids = array_map( 'absint', $current['categories'] );
 
 		if ( empty( $term_ids ) ) {
@@ -507,21 +791,188 @@ class CWC_Admin {
 	}
 
 	/**
-	 * Sanitizes the submitted global option into one well-formed array.
+	 * Handles the registry create/delete actions posted to the page.
 	 *
-	 * Every stored value is validated/coerced here, exactly once (AS-2):
-	 * slides 1-12, gap 8-64, count int ≥ 0, categories as positive ids, buy as
-	 * a boolean, buy_text as text, type within {product, category}. Unknown or
-	 * invalid keys are normalized to their defaults, never resurrected from the
-	 * raw post (CM-2). The result contains only global option keys — category
-	 * image overrides live in term meta via save_category_images().
+	 * Runs on admin_init (D4), mirroring save_category_images(): capability
+	 * first, then check_admin_referer, then the write. The Settings API stays
+	 * the pure per-slug edit surface; create and delete both redirect back to
+	 * the list after a successful write.
+	 *
+	 * @since 0.1.0
+	 * @return void
+	 */
+	public function handle_registry_actions() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- This read only branches; create/delete each verify their own nonce via check_admin_referer() before writing.
+		if ( ! isset( $_POST['cwc_registry_action'] ) ) {
+			return;
+		}
+
+		// Capability first (R1-W3): fail gracefully for unauthorized users
+		// instead of a hard wp-die from check_admin_referer.
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- The value only selects the nonce-verified handler (create_instance/delete_instance) that runs below.
+		$action = sanitize_key( (string) wp_unslash( $_POST['cwc_registry_action'] ?? '' ) );
+
+		if ( 'create' === $action ) {
+			$this->create_instance();
+		} elseif ( 'delete' === $action ) {
+			$this->delete_instance();
+		}
+	}
+
+	/**
+	 * Creates a new registry instance from the posted slug + `__new__` fields.
+	 *
+	 * Slugifies the posted name (AS-8) and rejects blank, reserved (`default`)
+	 * and duplicate slugs via add_settings_error — never overwriting an
+	 * existing instance. The write goes through update_option() on admin_init,
+	 * not the option sanitizer (D4).
+	 *
+	 * @since 0.1.0
+	 * @return void
+	 */
+	private function create_instance() {
+		check_admin_referer( $this->create_nonce_action, $this->registry_nonce_field );
+
+		$list_url = add_query_arg( 'page', $this->page_slug, admin_url( 'admin.php' ) );
+		$raw_slug = isset( $_POST['cwc_new_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['cwc_new_slug'] ) ) : '';
+		$slug     = $this->slugify( $raw_slug );
+
+		$fields = ( isset( $_POST['cwc_carousel_registry']['__new__'] ) && is_array( $_POST['cwc_carousel_registry']['__new__'] ) )
+			? wp_unslash( $_POST['cwc_carousel_registry']['__new__'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Unslashed here; every value is sanitized per-key by sanitize_instance() below.
+			: array();
+
+		$registry = get_option( 'cwc_carousel_registry', array() );
+		$registry = is_array( $registry ) ? $registry : array();
+
+		if ( '' === $slug ) {
+			add_settings_error( $this->option_group, 'cwc_invalid_slug', __( 'The carousel name must contain at least one letter, number, or hyphen.', 'cwc-carousel' ) );
+		} elseif ( 'default' === $slug ) {
+			add_settings_error( $this->option_group, 'cwc_reserved_slug', __( '"default" is a reserved name and cannot be used.', 'cwc-carousel' ) );
+		} elseif ( isset( $registry[ $slug ] ) ) {
+			add_settings_error( $this->option_group, 'cwc_duplicate_slug', __( 'A carousel with that name already exists.', 'cwc-carousel' ) );
+		} else {
+			$settings          = new CWC_Settings();
+			$registry[ $slug ] = $settings->normalize( $this->sanitize_instance( $fields ) );
+			update_option( 'cwc_carousel_registry', $registry, false );
+
+			wp_safe_redirect( $list_url );
+			exit;
+		}
+
+		// Rejections fall through WITHOUT a redirect: the create form posts to
+		// ?page=cwc-carousel&cwc_action=create, so render_page() re-renders the
+		// editor on this same request and settings_errors() shows the rejection
+		// added above (AS-8 clear admin error).
+	}
+
+	/**
+	 * Deletes a registry instance after its confirmation form submits.
+	 *
+	 * Refuses the reserved `default` and unknown slugs (AS-7, AS-8), removes
+	 * the slug from the registry, then redirects to the list. Pages referencing
+	 * the removed name resolve the `default` instance afterwards (CM-8).
+	 *
+	 * @since 0.1.0
+	 * @return void
+	 */
+	private function delete_instance() {
+		check_admin_referer( $this->delete_nonce_action, $this->registry_nonce_field );
+
+		$list_url = add_query_arg( 'page', $this->page_slug, admin_url( 'admin.php' ) );
+		$slug     = isset( $_POST['cwc_delete_slug'] ) ? $this->slugify( sanitize_text_field( wp_unslash( $_POST['cwc_delete_slug'] ) ) ) : '';
+
+		$registry = get_option( 'cwc_carousel_registry', array() );
+		$registry = is_array( $registry ) ? $registry : array();
+
+		if ( '' === $slug || 'default' === $slug || ! isset( $registry[ $slug ] ) ) {
+			wp_safe_redirect( $list_url );
+			exit;
+		}
+
+		unset( $registry[ $slug ] );
+		update_option( 'cwc_carousel_registry', $registry, false );
+
+		wp_safe_redirect( $list_url );
+		exit;
+	}
+
+	/**
+	 * Sanitizes a submitted registry update, replacing only the posted slugs.
+	 *
+	 * Runs per slug (AS-5) and is strictly EDIT-ONLY (D4): a posted key whose
+	 * slug is not already present in the current registry is rejected — the
+	 * sanitizer must never create a new registry key (creation only happens
+	 * through the AS-8-guarded create flow in handle_registry_actions()).
+	 * Each posted slug is slugified into its storage key and sanitized via
+	 * sanitize_instance(); every other registry key is left untouched.
+	 * Non-edited contract keys (title/category/mix) are preserved from the
+	 * stored value, and the merged result is normalized to the full 14-key
+	 * contract via CWC_Settings::normalize() (D5). The create placeholder
+	 * `__new__` is never written here.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param mixed $input Raw submitted option value.
-	 * @return array Sanitized global option array.
+	 * @param mixed $input Raw submitted registry array.
+	 * @return array Sanitized registry map.
 	 */
-	public function sanitize_options( $input ) {
+	public function sanitize_registry( $input ) {
+		$input    = ( is_array( $input ) ) ? $input : array();
+		$registry = get_option( 'cwc_carousel_registry', array() );
+		$registry = is_array( $registry ) ? $registry : array();
+
+		$settings = new CWC_Settings();
+		$seen     = array();
+
+		foreach ( $input as $raw_slug => $instance ) {
+			if ( ! is_array( $instance ) ) {
+				continue;
+			}
+
+			$slug = $this->slugify( (string) $raw_slug );
+
+			// Blank slugs and posted keys that slugify to the same canonical
+			// slug twice (duplicates) are rejected; the first one wins.
+			if ( '' === $slug || isset( $seen[ $slug ] ) ) {
+				continue;
+			}
+
+			// Unknown slugs are rejected instead of being silently merged
+			// (never create via the sanitizer), so a crafted options.php POST
+			// cannot bypass the create flow's AS-8 guards.
+			if ( ! isset( $registry[ $slug ] ) || ! is_array( $registry[ $slug ] ) ) {
+				continue;
+			}
+
+			$seen[ $slug ] = true;
+
+			$existing          = $registry[ $slug ];
+			$registry[ $slug ] = $settings->normalize(
+				wp_parse_args( $this->sanitize_instance( $instance ), $existing )
+			);
+		}
+
+		return $registry;
+	}
+
+	/**
+	 * Sanitizes one instance submission into one well-formed config.
+	 *
+	 * Repurposed from the legacy global-option sanitizer (AS-5): every value is
+	 * validated/coerced here, exactly once — slides 1-12, gap 8-64, count int
+	 * ≥ 0, categories as positive ids, buy as a boolean, buy_text as text, type
+	 * within {product, category}. Unknown or invalid keys are normalized to
+	 * their defaults, never resurrected from the raw post (CM-2).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param mixed $input Raw submitted instance array.
+	 * @return array Sanitized instance config.
+	 */
+	private function sanitize_instance( $input ): array {
 		$input = ( is_array( $input ) ) ? $input : array();
 		$built = $this->builtins();
 
@@ -547,12 +998,49 @@ class CWC_Admin {
 	}
 
 	/**
-	 * Returns the current stored option merged over built-in defaults.
+	 * Returns the config for one registry instance.
+	 *
+	 * Reads the registry via CWC_Settings and normalizes the stored value so
+	 * every contract key is present for the renderers; falls back to
+	 * CWC_Settings::defaults() (legacy option / built-ins) when the slug is
+	 * absent — the same fallback resolve() uses (CM-8). A small local map keeps
+	 * the page functional even when the settings model file is not loaded.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $slug Instance slug (may be 'default').
+	 * @return array Normalized instance config keyed by resolved config keys.
+	 */
+	private function instance_current( string $slug ): array {
+		if ( class_exists( 'CWC_Settings' ) ) {
+			$settings = new CWC_Settings();
+			$registry = $settings->registry();
+
+			if ( isset( $registry[ $slug ] ) && is_array( $registry[ $slug ] ) ) {
+				return $settings->normalize( $registry[ $slug ] );
+			}
+
+			return $settings->defaults();
+		}
+
+		$option = get_option( 'cwc_carousel_registry', array() );
+		$option = is_array( $option ) ? $option : array();
+
+		if ( isset( $option[ $slug ] ) && is_array( $option[ $slug ] ) ) {
+			return wp_parse_args( $option[ $slug ], $this->builtins() );
+		}
+
+		return $this->builtins();
+	}
+
+	/**
+	 * Returns the current stored legacy option merged over built-in defaults.
 	 *
 	 * Reuses CWC_Settings defaults() when present so rollback via
 	 * delete_option() is exact (the option reads back to built-ins). A small
 	 * local built-in map keeps the page functional even when the settings model
-	 * file is not loaded.
+	 * file is not loaded. Only drives the category-images fallback now (the
+	 * instance editor reads the registry via instance_current()).
 	 *
 	 * @since 0.1.0
 	 *
@@ -573,13 +1061,13 @@ class CWC_Admin {
 	}
 
 	/**
-	 * Returns the built-in defaults for the global option.
+	 * Returns the built-in defaults for an instance config.
 	 *
 	 * Mirrors the CWC_Settings built-ins for the fields this page edits.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array Default global option values.
+	 * @return array Default instance values.
 	 */
 	private function builtins(): array {
 		return array(
@@ -598,14 +1086,31 @@ class CWC_Admin {
 	}
 
 	/**
+	 * Slugifies a raw name into a registry key (AS-8).
+	 *
+	 * Applies sanitize_title() first, then folds any remaining underscore into
+	 * a hyphen so stored slugs only ever contain lowercase letters, digits and
+	 * hyphens (AS-8 charset). resolve() in class-settings.php applies the exact
+	 * same normalization to the shortcode `name` attribute.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $raw Raw name from the create form.
+	 * @return string Slug (lowercase letters, numbers and hyphens).
+	 */
+	private function slugify( string $raw ): string {
+		return str_replace( '_', '-', sanitize_title( $raw, '', 'save' ) );
+	}
+
+	/**
 	 * Coerces a raw numeric field into an integer within the given bounds.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param array  $input   Raw option value.
-	 * @param string $key     Field key.
-	 * @param int    $min     Inclusive minimum.
-	 * @param int    $max     Inclusive maximum.
+	 * @param array  $input    Raw option value.
+	 * @param string $key      Field key.
+	 * @param int    $min      Inclusive minimum.
+	 * @param int    $max      Inclusive maximum.
 	 * @param int    $fallback Fallback when the key is absent.
 	 * @return int Bounded integer.
 	 */
@@ -663,7 +1168,7 @@ class CWC_Admin {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param mixed  $value Raw text value.
+	 * @param mixed  $value    Raw text value.
 	 * @param string $fallback Fallback text.
 	 * @return string Sanitized text.
 	 */
