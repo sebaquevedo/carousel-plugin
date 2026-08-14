@@ -11,7 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Resolves carousel configuration from global defaults and shortcode atts.
+ * Resolves carousel configuration from the named-instance registry and
+ * shortcode atts.
  *
  * Pure and side-effect-free (CM-4): `defaults()` reads the sanitized
  * `cwc_carousel_options` option with autoload off and falls back to built-in
@@ -20,6 +21,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  * key outside the known config set (CM-2). `count` is numeric-only via
  * absint, so a zero count yields an empty carousel and no "all" sentinel
  * exists (CM-3).
+ *
+ * The model is registry-aware: `registry()` reads the `cwc_carousel_registry`
+ * option (autoload off, CM-7) and `resolve()` selects the named instance — or
+ * the reserved `default`, never fatal (CM-8) — as the merge base. The
+ * registry is read-only here: the admin writes it (AS-5) and the bootstrap
+ * seeds it once (PB-4). Every resolved instance exposes exactly the 14-key
+ * contract via `normalize()` (CM-9).
  *
  * @since 0.1.0
  */
@@ -50,13 +58,16 @@ class CWC_Settings {
 	/**
 	 * Resolves one carousel instance's configuration.
 	 *
-	 * Starts from the global defaults and whitelists the shortcode attributes
-	 * (unknown atts are dropped), so an explicitly supplied attribute overrides
-	 * the administrative default (CM-2). Shortcode attributes that are empty
-	 * strings are treated as "not provided" and fall through to the defaults —
-	 * shortcode_atts() fills absent attrs with "" so they must not override
-	 * the administrative values. Each named instance resolves its own config —
-	 * nothing global is mutated (CM-4, SC-5).
+	 * Starts from the named instance's config (the reserved `default` when
+	 * `name` is absent or unknown — never fatal, CM-8) and whitelists the
+	 * shortcode attributes (unknown atts are dropped), so an explicitly
+	 * supplied attribute overrides the instance default (CM-2). Shortcode
+	 * attributes that are empty strings are treated as "not provided" and
+	 * fall through to the instance defaults — shortcode_atts() fills absent
+	 * attrs with "" so they must not override the administrative values. Each
+	 * named instance resolves its own config — nothing global is mutated
+	 * (CM-4, SC-5). `name` is consumed here and never serializes into the
+	 * resolved contract (SC-8, CM-9).
 	 *
 	 * @since 0.1.0
 	 *
@@ -64,11 +75,26 @@ class CWC_Settings {
 	 * @return array Resolved config keyed by resolved config key.
 	 */
 	public function resolve( array $atts ): array {
-		$defaults = $this->defaults();
+		// The `name` attribute selects the instance whose config becomes the
+		// merge base. It is consumed before the empty-string filter so it can
+		// never participate in attribute layering or leak into the 14-key
+		// contract (SC-8, CM-9). An absent/empty name resolves the reserved
+		// `default` instance — today's behavior (CM-8).
+		$name = isset( $atts['name'] ) ? (string) $atts['name'] : '';
+		unset( $atts['name'] );
+
+		// Normalize the name the same way the admin slugifies registry slugs
+		// (class-admin.php slugify(), AS-8): sanitize_title + underscores to
+		// hyphens. `name="Productos"` or `name="mi_carousel"` therefore resolve
+		// to the stored lowercase hyphenated slug instead of silently falling
+		// back to `default`.
+		$name = str_replace( '_', '-', sanitize_title( $name, '', 'save' ) );
+
+		$base = $this->instance_base( $name );
 
 		// shortcode_atts() fills attributes the shortcode does not set with ""
 		// (not null), so an empty string means "not provided": drop it so the
-		// administrative default applies. A string "0" is kept — count=0 still
+		// instance default applies. A string "0" is kept — count=0 still
 		// yields an empty carousel per CM-3.
 		$atts = array_filter(
 			$atts,
@@ -78,23 +104,111 @@ class CWC_Settings {
 		);
 
 		$known = array(
-			'type'          => $defaults['type'],
-			'title'         => $defaults['title'],
-			'category'      => $defaults['category'],
-			'categories'    => $defaults['categories'],
-			'mix'           => $defaults['mix'],
-			'count'         => $defaults['count'],
-			'slides'        => $defaults['slides'],
-			'slides_tablet' => $defaults['slides_tablet'],
-			'slides_mobile' => $defaults['slides_mobile'],
-			'gap'           => $defaults['gap'],
-			'arrows'        => $defaults['arrows'],
-			'pagination'    => $defaults['pagination'],
-			'buy'           => $defaults['buy'],
-			'buy_text'      => $defaults['buy_text'],
+			'type'          => $base['type'],
+			'title'         => $base['title'],
+			'category'      => $base['category'],
+			'categories'    => $base['categories'],
+			'mix'           => $base['mix'],
+			'count'         => $base['count'],
+			'slides'        => $base['slides'],
+			'slides_tablet' => $base['slides_tablet'],
+			'slides_mobile' => $base['slides_mobile'],
+			'gap'           => $base['gap'],
+			'arrows'        => $base['arrows'],
+			'pagination'    => $base['pagination'],
+			'buy'           => $base['buy'],
+			'buy_text'      => $base['buy_text'],
 		);
 
 		return $this->normalize( wp_parse_args( $atts, $known ) );
+	}
+
+	/**
+	 * Returns the named-instance registry as a slug-keyed map.
+	 *
+	 * Reads the `cwc_carousel_registry` option (autoload off). A missing or
+	 * non-array option reads as an empty map; reading never writes or creates
+	 * the option (CM-7) — the registry is written by the admin (AS-5) and
+	 * seeded once by the bootstrap migration (PB-4).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array { slug => full_config } registry map (may be empty).
+	 */
+	public function registry(): array {
+		$registry = get_option( 'cwc_carousel_registry', array() );
+
+		return is_array( $registry ) ? $registry : array();
+	}
+
+	/**
+	 * Returns the config base for a named instance.
+	 *
+	 * The supplied slug wins when present; otherwise the reserved `default`
+	 * instance is used, and as a last resort the legacy defaults() — so an
+	 * unknown or missing name never fails (CM-8, D3). An edited `default`
+	 * takes precedence over the stale legacy option.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $name Instance slug (may be empty for the default).
+	 * @return array Normalized 14-key config for the base.
+	 */
+	public function instance_base( string $name ): array {
+		$registry = $this->registry();
+
+		if ( isset( $registry[ $name ] ) && is_array( $registry[ $name ] ) ) {
+			return $this->normalize( $registry[ $name ] );
+		}
+
+		if ( isset( $registry['default'] ) && is_array( $registry['default'] ) ) {
+			return $this->normalize( $registry['default'] );
+		}
+
+		return $this->defaults();
+	}
+
+	/**
+	 * Returns the default named instances seeded on first migration.
+	 *
+	 * Only a defaults source for the bootstrap migration (PB-4): the registry
+	 * is never auto-overwritten once present, so user edits survive. The
+	 * values match CM-10: `productos` is a product carousel at 3/2/1 with
+	 * arrows, pagination and buy on; `categorias` is a category carousel at
+	 * 4/2/1 with arrows and pagination on (buy/buy_text carry their builtins).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array { slug => normalized 14-key config } for the two seeds.
+	 */
+	public function seeds(): array {
+		return array(
+			'productos'  => $this->normalize(
+				array(
+					'type'          => 'product',
+					'slides'        => 3,
+					'slides_tablet' => 2,
+					'slides_mobile' => 1,
+					'gap'           => 16,
+					'count'         => 8,
+					'arrows'        => true,
+					'pagination'    => true,
+					'buy'           => true,
+				)
+			),
+			'categorias' => $this->normalize(
+				array(
+					'type'          => 'category',
+					'slides'        => 4,
+					'slides_tablet' => 2,
+					'slides_mobile' => 1,
+					'gap'           => 16,
+					'count'         => 8,
+					'arrows'        => true,
+					'pagination'    => true,
+				)
+			),
+		);
 	}
 
 	/**
@@ -132,14 +246,19 @@ class CWC_Settings {
 	 *
 	 * Every key on the resolved shape is present regardless of input, and each
 	 * value is coerced to its documented type so the result always serializes
-	 * cleanly with wp_json_encode() (CM-4). Unknown input keys are dropped.
+	 * cleanly with wp_json_encode() (CM-4). Unknown input keys are dropped —
+	 * including `name`, which resolve() consumes before merging (SC-8, CM-9).
+	 *
+	 * Shared coerce point (D5): resolve(), instance_base(), the bootstrap
+	 * migration (PB-4), and the admin all funnel through this method so
+	 * per-instance shapes never drift.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @param array $config Raw config array (option or shortcode atts subset).
 	 * @return array Normalized resolved config array.
 	 */
-	private function normalize( array $config ): array {
+	public function normalize( array $config ): array {
 		$merged = wp_parse_args( $config, $this->builtins() );
 
 		$normalized = array(

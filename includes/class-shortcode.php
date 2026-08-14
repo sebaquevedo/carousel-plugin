@@ -37,10 +37,13 @@ class CWC_Shortcode {
 	 * Renders the carousel for the shortcode.
 	 *
 	 * Resolves the per-instance config from the whitelisted attributes and
-	 * dispatches by type. The legacy `ids` attribute is kept for backwards
-	 * compatibility: when present it drives the manual-ID product query path
-	 * instead of the resolved selection (PQ-2). Always returns a string —
-	 * never echoes (SC-1).
+	 * dispatches by type. `name` selects a registered instance as the merge
+	 * base (absent → reserved `default`, SC-8) and `slides_tablet`,
+	 * `slides_mobile` and `gap` are whitelisted so per-instance overrides
+	 * reach resolve() instead of being dropped (SC-9). The legacy `ids`
+	 * attribute is kept for backwards compatibility: when present it drives
+	 * the manual-ID product query path instead of the resolved selection
+	 * (PQ-2). Always returns a string — never echoes (SC-1).
 	 *
 	 * @since 0.1.0
 	 *
@@ -50,18 +53,22 @@ class CWC_Shortcode {
 	public function render( $atts ): string {
 		$atts = shortcode_atts(
 			array(
-				'type'       => '',
-				'title'      => '',
-				'category'   => '',
-				'categories' => '',
-				'mix'        => '',
-				'count'      => '',
-				'slides'     => '',
-				'arrows'     => '',
-				'pagination' => '',
-				'buy'        => '',
-				'buy_text'   => '',
-				'ids'        => '',
+				'name'          => '',
+				'type'          => '',
+				'title'         => '',
+				'category'      => '',
+				'categories'    => '',
+				'mix'           => '',
+				'count'         => '',
+				'slides'        => '',
+				'slides_tablet' => '',
+				'slides_mobile' => '',
+				'gap'           => '',
+				'arrows'        => '',
+				'pagination'    => '',
+				'buy'           => '',
+				'buy_text'      => '',
+				'ids'           => '',
 			),
 			$atts,
 			'cwc_carousel'
