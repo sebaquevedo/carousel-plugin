@@ -103,12 +103,43 @@ unset( $cwc_include, $cwc_file );
 /**
  * Boots the plugin once all plugins have loaded.
  *
+ * Runs the lazy registry migration first (PB-4): when the
+ * `cwc_carousel_registry` option is absent it is seeded exactly once with the
+ * reserved `default` instance (copied from the legacy `cwc_carousel_options`
+ * option when present, else the built-ins) plus the `productos` and
+ * `categorias` seeds. The migration never runs on activation (PB-2), never
+ * overwrites an existing registry (user edits preserved), and never deletes
+ * the legacy option — it stays as the manual restore path.
+ *
  * @since 0.1.0
  * @return void
  */
 function cwc_carousel_boot() {
 	if ( ! class_exists( 'CWC_Plugin' ) ) {
 		return;
+	}
+
+	$cwc_registry = get_option( 'cwc_carousel_registry' );
+
+	// Seed the registry exactly once (PB-4). A missing option goes through
+	// add_option(), which is a no-op if a concurrent request already seeded it
+	// (race-safe, idempotent). A present-but-corrupt non-array value is
+	// repaired in place with update_option() so the broken value stops being
+	// re-attempted on every request.
+	if ( ! is_array( $cwc_registry ) ) {
+		$cwc_settings = new CWC_Settings();
+		$cwc_default  = get_option( 'cwc_carousel_options', array() );
+		$cwc_seed     = array(
+			'default'    => $cwc_settings->normalize( is_array( $cwc_default ) ? $cwc_default : array() ),
+			'productos'  => $cwc_settings->seeds()['productos'],
+			'categorias' => $cwc_settings->seeds()['categorias'],
+		);
+
+		if ( false === $cwc_registry ) {
+			add_option( 'cwc_carousel_registry', $cwc_seed, '', false );
+		} else {
+			update_option( 'cwc_carousel_registry', $cwc_seed, false );
+		}
 	}
 
 	$cwc_plugin = new CWC_Plugin();
