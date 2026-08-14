@@ -99,11 +99,22 @@ class CWC_Admin {
 	private $meta_key = 'cwc_cat_image';
 
 	/**
+	 * Shared settings model instance backing every registry read/write.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @var CWC_Settings
+	 */
+	private $settings;
+
+	/**
 	 * Registers the admin hooks.
 	 *
 	 * @since 0.1.0
 	 */
 	public function __construct() {
+		$this->settings = new CWC_Settings();
+
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'save_category_images' ) );
@@ -205,7 +216,7 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_list() {
-		$settings   = new CWC_Settings();
+		$settings   = $this->settings;
 		$registry   = $settings->registry();
 		$create_url = add_query_arg(
 			array(
@@ -309,12 +320,13 @@ class CWC_Admin {
 	 */
 	public function render_editor( string $mode ) {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page routing; the edit form carries the Settings API nonce, create carries wp_nonce_field.
-		$slug = isset( $_GET['slug'] ) ? $this->slugify( sanitize_text_field( wp_unslash( $_GET['slug'] ) ) ) : '';
+		$slug = isset( $_GET['slug'] ) ? $this->settings->slugify( sanitize_text_field( wp_unslash( $_GET['slug'] ) ) ) : '';
 
 		if ( 'edit' === $mode ) {
-			$registry = ( new CWC_Settings() )->registry();
+			$registry = $this->settings->registry();
 
 			if ( '' === $slug || ( 'default' !== $slug && ! isset( $registry[ $slug ] ) ) ) {
+				add_settings_error( $this->option_group, 'cwc_unknown_slug', __( 'The requested carousel was not found.', 'cwc-carousel' ), 'error' );
 				$this->render_list();
 				return;
 			}
@@ -470,8 +482,8 @@ class CWC_Admin {
 	 */
 	public function render_delete_confirm() {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only page routing; the delete form carries wp_nonce_field.
-		$slug     = isset( $_GET['slug'] ) ? $this->slugify( sanitize_text_field( wp_unslash( $_GET['slug'] ) ) ) : '';
-		$registry = ( new CWC_Settings() )->registry();
+		$slug     = isset( $_GET['slug'] ) ? $this->settings->slugify( sanitize_text_field( wp_unslash( $_GET['slug'] ) ) ) : '';
+		$registry = $this->settings->registry();
 
 		if ( '' === $slug || 'default' === $slug || ! isset( $registry[ $slug ] ) ) {
 			$this->render_list();
@@ -839,7 +851,7 @@ class CWC_Admin {
 
 		$list_url = add_query_arg( 'page', $this->page_slug, admin_url( 'admin.php' ) );
 		$raw_slug = isset( $_POST['cwc_new_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['cwc_new_slug'] ) ) : '';
-		$slug     = $this->slugify( $raw_slug );
+		$slug     = $this->settings->slugify( $raw_slug );
 
 		$fields = ( isset( $_POST['cwc_carousel_registry']['__new__'] ) && is_array( $_POST['cwc_carousel_registry']['__new__'] ) )
 			? wp_unslash( $_POST['cwc_carousel_registry']['__new__'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Unslashed here; every value is sanitized per-key by sanitize_instance() below.
@@ -855,7 +867,7 @@ class CWC_Admin {
 		} elseif ( isset( $registry[ $slug ] ) ) {
 			add_settings_error( $this->option_group, 'cwc_duplicate_slug', __( 'A carousel with that name already exists.', 'cwc-carousel' ) );
 		} else {
-			$settings          = new CWC_Settings();
+			$settings          = $this->settings;
 			$registry[ $slug ] = $settings->normalize( $this->sanitize_instance( $fields ) );
 			update_option( 'cwc_carousel_registry', $registry, false );
 
@@ -883,7 +895,7 @@ class CWC_Admin {
 		check_admin_referer( $this->delete_nonce_action, $this->registry_nonce_field );
 
 		$list_url = add_query_arg( 'page', $this->page_slug, admin_url( 'admin.php' ) );
-		$slug     = isset( $_POST['cwc_delete_slug'] ) ? $this->slugify( sanitize_text_field( wp_unslash( $_POST['cwc_delete_slug'] ) ) ) : '';
+		$slug     = isset( $_POST['cwc_delete_slug'] ) ? $this->settings->slugify( sanitize_text_field( wp_unslash( $_POST['cwc_delete_slug'] ) ) ) : '';
 
 		$registry = get_option( 'cwc_carousel_registry', array() );
 		$registry = is_array( $registry ) ? $registry : array();
@@ -924,7 +936,7 @@ class CWC_Admin {
 		$registry = get_option( 'cwc_carousel_registry', array() );
 		$registry = is_array( $registry ) ? $registry : array();
 
-		$settings = new CWC_Settings();
+		$settings = $this->settings;
 		$seen     = array();
 
 		foreach ( $input as $raw_slug => $instance ) {
@@ -932,7 +944,7 @@ class CWC_Admin {
 				continue;
 			}
 
-			$slug = $this->slugify( (string) $raw_slug );
+			$slug = $this->settings->slugify( (string) $raw_slug );
 
 			// Blank slugs and posted keys that slugify to the same canonical
 			// slug twice (duplicates) are rejected; the first one wins.
@@ -942,8 +954,19 @@ class CWC_Admin {
 
 			// Unknown slugs are rejected instead of being silently merged
 			// (never create via the sanitizer), so a crafted options.php POST
-			// cannot bypass the create flow's AS-8 guards.
+			// cannot bypass the create flow's AS-8 guards. Surface the reason
+			// instead of dropping it silently (R4-01).
 			if ( ! isset( $registry[ $slug ] ) || ! is_array( $registry[ $slug ] ) ) {
+				add_settings_error(
+					$this->option_group,
+					'cwc_edit_rejected',
+					sprintf(
+						/* translators: %s: instance slug. */
+						__( 'Cannot edit "%s": it does not exist in the registry.', 'cwc-carousel' ),
+						$slug
+					),
+					'error'
+				);
 				continue;
 			}
 
@@ -974,7 +997,7 @@ class CWC_Admin {
 	 */
 	private function sanitize_instance( $input ): array {
 		$input = ( is_array( $input ) ) ? $input : array();
-		$built = $this->builtins();
+		$built = $this->settings->builtins();
 
 		$type       = isset( $input['type'] ) ? $input['type'] : $built['type'];
 		$arrows     = isset( $input['arrows'] ) ? $input['arrows'] : $built['arrows'];
@@ -984,15 +1007,15 @@ class CWC_Admin {
 
 		return array(
 			'type'          => ( 'category' === $type ) ? 'category' : 'product',
-			'categories'    => $this->sanitize_ids( isset( $input['categories'] ) ? $input['categories'] : array() ),
+			'categories'    => $this->settings->sanitize_ids( isset( $input['categories'] ) ? $input['categories'] : array() ),
 			'slides'        => $this->bound( $input, 'slides', 1, 12, $built['slides'] ),
 			'slides_tablet' => $this->bound( $input, 'slides_tablet', 1, 12, $built['slides_tablet'] ),
 			'slides_mobile' => $this->bound( $input, 'slides_mobile', 1, 12, $built['slides_mobile'] ),
 			'gap'           => $this->bound( $input, 'gap', 8, 64, $built['gap'] ),
 			'count'         => $this->bound( $input, 'count', 0, PHP_INT_MAX, $built['count'] ),
-			'arrows'        => $this->parse_bool( $arrows ),
-			'pagination'    => $this->parse_bool( $pagination ),
-			'buy'           => $this->parse_bool( $buy ),
+			'arrows'        => $this->settings->parse_bool( $arrows ),
+			'pagination'    => $this->settings->parse_bool( $pagination ),
+			'buy'           => $this->settings->parse_bool( $buy ),
 			'buy_text'      => $this->clean_text( $text, $built['buy_text'] ),
 		);
 	}
@@ -1000,11 +1023,10 @@ class CWC_Admin {
 	/**
 	 * Returns the config for one registry instance.
 	 *
-	 * Reads the registry via CWC_Settings and normalizes the stored value so
-	 * every contract key is present for the renderers; falls back to
-	 * CWC_Settings::defaults() (legacy option / built-ins) when the slug is
-	 * absent — the same fallback resolve() uses (CM-8). A small local map keeps
-	 * the page functional even when the settings model file is not loaded.
+	 * Reads the registry via the shared settings model and normalizes the
+	 * stored value so every contract key is present for the renderers; falls
+	 * back to CWC_Settings::defaults() (legacy option / built-ins) when the
+	 * slug is absent — the same fallback resolve() uses (CM-8).
 	 *
 	 * @since 0.1.0
 	 *
@@ -1012,94 +1034,29 @@ class CWC_Admin {
 	 * @return array Normalized instance config keyed by resolved config keys.
 	 */
 	private function instance_current( string $slug ): array {
-		if ( class_exists( 'CWC_Settings' ) ) {
-			$settings = new CWC_Settings();
-			$registry = $settings->registry();
+		$registry = $this->settings->registry();
 
-			if ( isset( $registry[ $slug ] ) && is_array( $registry[ $slug ] ) ) {
-				return $settings->normalize( $registry[ $slug ] );
-			}
-
-			return $settings->defaults();
+		if ( isset( $registry[ $slug ] ) && is_array( $registry[ $slug ] ) ) {
+			return $this->settings->normalize( $registry[ $slug ] );
 		}
 
-		$option = get_option( 'cwc_carousel_registry', array() );
-		$option = is_array( $option ) ? $option : array();
-
-		if ( isset( $option[ $slug ] ) && is_array( $option[ $slug ] ) ) {
-			return wp_parse_args( $option[ $slug ], $this->builtins() );
-		}
-
-		return $this->builtins();
+		return $this->settings->defaults();
 	}
 
 	/**
 	 * Returns the current stored legacy option merged over built-in defaults.
 	 *
-	 * Reuses CWC_Settings defaults() when present so rollback via
-	 * delete_option() is exact (the option reads back to built-ins). A small
-	 * local built-in map keeps the page functional even when the settings model
-	 * file is not loaded. Only drives the category-images fallback now (the
-	 * instance editor reads the registry via instance_current()).
+	 * Reuses CWC_Settings::defaults() so rollback via delete_option() is exact
+	 * (the option reads back to built-ins). Only drives the category-images
+	 * fallback now (the instance editor reads the registry via
+	 * instance_current()).
 	 *
 	 * @since 0.1.0
 	 *
 	 * @return array Current global option keyed by resolved config keys.
 	 */
 	private function current() {
-		if ( class_exists( 'CWC_Settings' ) ) {
-			return ( new CWC_Settings() )->defaults();
-		}
-
-		$option = get_option( 'cwc_carousel_options', array() );
-
-		if ( ! is_array( $option ) ) {
-			$option = array();
-		}
-
-		return wp_parse_args( $option, $this->builtins() );
-	}
-
-	/**
-	 * Returns the built-in defaults for an instance config.
-	 *
-	 * Mirrors the CWC_Settings built-ins for the fields this page edits.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array Default instance values.
-	 */
-	private function builtins(): array {
-		return array(
-			'type'          => 'product',
-			'categories'    => array(),
-			'slides'        => 3,
-			'slides_tablet' => 2,
-			'slides_mobile' => 1,
-			'gap'           => 16,
-			'count'         => 8,
-			'arrows'        => true,
-			'pagination'    => true,
-			'buy'           => true,
-			'buy_text'      => 'Comprar',
-		);
-	}
-
-	/**
-	 * Slugifies a raw name into a registry key (AS-8).
-	 *
-	 * Applies sanitize_title() first, then folds any remaining underscore into
-	 * a hyphen so stored slugs only ever contain lowercase letters, digits and
-	 * hyphens (AS-8 charset). resolve() in class-settings.php applies the exact
-	 * same normalization to the shortcode `name` attribute.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param string $raw Raw name from the create form.
-	 * @return string Slug (lowercase letters, numbers and hyphens).
-	 */
-	private function slugify( string $raw ): string {
-		return str_replace( '_', '-', sanitize_title( $raw, '', 'save' ) );
+		return $this->settings->defaults();
 	}
 
 	/**
@@ -1120,47 +1077,6 @@ class CWC_Admin {
 		}
 
 		return min( $max, max( $min, absint( $input[ $key ] ) ) );
-	}
-
-	/**
-	 * Coerces a raw id list into non-zero positive integers.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param mixed $raw Raw categories value.
-	 * @return int[] Sanitized positive integer IDs (may be empty).
-	 */
-	private function sanitize_ids( $raw ): array {
-		if ( is_array( $raw ) ) {
-			$ids = array_map( 'absint', $raw );
-		} else {
-			$ids = array_map( 'absint', wp_parse_id_list( (string) $raw ) );
-		}
-
-		return array_values(
-			array_filter(
-				$ids,
-				static function ( $id ) {
-					return $id > 0;
-				}
-			)
-		);
-	}
-
-	/**
-	 * Coerces a truthy/falsy flag into a boolean.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param mixed $value Raw boolean-ish value.
-	 * @return bool Normalized boolean.
-	 */
-	private function parse_bool( $value ): bool {
-		if ( is_bool( $value ) ) {
-			return (bool) $value;
-		}
-
-		return filter_var( $value, FILTER_VALIDATE_BOOLEAN );
 	}
 
 	/**

@@ -83,12 +83,12 @@ class CWC_Settings {
 		$name = isset( $atts['name'] ) ? (string) $atts['name'] : '';
 		unset( $atts['name'] );
 
-		// Normalize the name the same way the admin slugifies registry slugs
-		// (class-admin.php slugify(), AS-8): sanitize_title + underscores to
-		// hyphens. `name="Productos"` or `name="mi_carousel"` therefore resolve
-		// to the stored lowercase hyphenated slug instead of silently falling
-		// back to `default`.
-		$name = str_replace( '_', '-', sanitize_title( $name, '', 'save' ) );
+		// Normalize the name through the shared slugify() so the shortcode
+		// `name` and the admin's registry slugs normalize identically (AS-8):
+		// sanitize_title + underscores to hyphens. `name="Productos"` or
+		// `name="mi_carousel"` therefore resolve to the stored lowercase
+		// hyphenated slug instead of silently falling back to `default`.
+		$name = $this->slugify( $name );
 
 		$base = $this->instance_base( $name );
 
@@ -121,6 +121,25 @@ class CWC_Settings {
 		);
 
 		return $this->normalize( wp_parse_args( $atts, $known ) );
+	}
+
+	/**
+	 * Slugifies a raw name into a registry key (AS-8).
+	 *
+	 * Applies sanitize_title() first, then folds any remaining underscore into
+	 * a hyphen so stored slugs only ever contain lowercase letters, digits and
+	 * hyphens (AS-8 charset). This is the single source of truth for slug
+	 * normalization: the shortcode `name` attribute in resolve() and the
+	 * admin's create/edit/delete flows (class-admin.php) all funnel through
+	 * here.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $raw Raw name.
+	 * @return string Slug (lowercase letters, numbers and hyphens).
+	 */
+	public function slugify( string $raw ): string {
+		return str_replace( '_', '-', sanitize_title( $raw, '', 'save' ) );
 	}
 
 	/**
@@ -222,7 +241,7 @@ class CWC_Settings {
 	 *
 	 * @return array Built-in default values keyed by resolved config key.
 	 */
-	private function builtins(): array {
+	public function builtins(): array {
 		return array(
 			'type'          => 'product',
 			'title'         => '',
@@ -297,7 +316,7 @@ class CWC_Settings {
 	 * @param mixed $value Raw boolean-ish value.
 	 * @return bool Normalized boolean.
 	 */
-	private function parse_bool( $value ): bool {
+	public function parse_bool( $value ): bool {
 		if ( is_bool( $value ) ) {
 			return $value;
 		}
@@ -309,14 +328,15 @@ class CWC_Settings {
 	 * Coerces a raw ID list into non-zero positive integers.
 	 *
 	 * Accepts an int[], a comma/whitespace-separated string, or a scalar, and
-	 * re-indexes the result so only valid term or product ids remain.
+	 * re-indexes the result so only valid term or product ids remain. Shared
+	 * with the admin sanitizer (class-admin.php) so both coerce identically.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @param mixed $raw Raw categories value.
 	 * @return int[] Sanitized positive integer IDs (may be empty).
 	 */
-	private function sanitize_ids( $raw ): array {
+	public function sanitize_ids( $raw ): array {
 		if ( is_array( $raw ) ) {
 			$ids = array_map( 'absint', $raw );
 		} else {
