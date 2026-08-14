@@ -216,8 +216,7 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_list() {
-		$settings   = $this->settings;
-		$registry   = $settings->registry();
+		$registry   = $this->settings->registry();
 		$create_url = add_query_arg(
 			array(
 				'page'       => $this->page_slug,
@@ -486,6 +485,7 @@ class CWC_Admin {
 		$registry = $this->settings->registry();
 
 		if ( '' === $slug || 'default' === $slug || ! isset( $registry[ $slug ] ) ) {
+			add_settings_error( $this->option_group, 'cwc_unknown_slug', __( 'The requested carousel was not found.', 'cwc-carousel' ), 'error' );
 			$this->render_list();
 			return;
 		}
@@ -840,8 +840,9 @@ class CWC_Admin {
 	 *
 	 * Slugifies the posted name (AS-8) and rejects blank, reserved (`default`)
 	 * and duplicate slugs via add_settings_error — never overwriting an
-	 * existing instance. The write goes through update_option() on admin_init,
-	 * not the option sanitizer (D4).
+	 * existing instance. The write goes through update_option(), which always
+	 * re-enters the edit-only sanitizer via the sanitize_option_* filter, so
+	 * the sanitizer is bypassed for this already-validated write (D4).
 	 *
 	 * @since 0.1.0
 	 * @return void
@@ -867,9 +868,16 @@ class CWC_Admin {
 		} elseif ( isset( $registry[ $slug ] ) ) {
 			add_settings_error( $this->option_group, 'cwc_duplicate_slug', __( 'A carousel with that name already exists.', 'cwc-carousel' ) );
 		} else {
-			$settings          = $this->settings;
-			$registry[ $slug ] = $settings->normalize( $this->sanitize_instance( $fields ) );
+			$registry[ $slug ] = $this->settings->normalize( $this->sanitize_instance( $fields ) );
+
+			// update_option() always runs sanitize_option(), which re-enters the
+			// edit-only sanitize_registry() via the sanitize_option_* filter and
+			// would strip this NEW slug (create already validated it via nonce +
+			// capability + slug checks + normalize), so bypass the sanitizer for
+			// this one write and restore it afterwards.
+			remove_filter( 'sanitize_option_cwc_carousel_registry', array( $this, 'sanitize_registry' ) );
 			update_option( 'cwc_carousel_registry', $registry, false );
+			add_filter( 'sanitize_option_cwc_carousel_registry', array( $this, 'sanitize_registry' ) );
 
 			wp_safe_redirect( $list_url );
 			exit;
@@ -906,7 +914,15 @@ class CWC_Admin {
 		}
 
 		unset( $registry[ $slug ] );
+
+		// update_option() always runs sanitize_option(), which re-enters the
+		// edit-only sanitize_registry() via the sanitize_option_* filter and
+		// would resurrect this removed slug (delete already validated it via
+		// nonce + capability + slug checks), so bypass the sanitizer for this
+		// one write and restore it afterwards.
+		remove_filter( 'sanitize_option_cwc_carousel_registry', array( $this, 'sanitize_registry' ) );
 		update_option( 'cwc_carousel_registry', $registry, false );
+		add_filter( 'sanitize_option_cwc_carousel_registry', array( $this, 'sanitize_registry' ) );
 
 		wp_safe_redirect( $list_url );
 		exit;
@@ -936,8 +952,7 @@ class CWC_Admin {
 		$registry = get_option( 'cwc_carousel_registry', array() );
 		$registry = is_array( $registry ) ? $registry : array();
 
-		$settings = $this->settings;
-		$seen     = array();
+		$seen = array();
 
 		foreach ( $input as $raw_slug => $instance ) {
 			if ( ! is_array( $instance ) ) {
@@ -973,7 +988,7 @@ class CWC_Admin {
 			$seen[ $slug ] = true;
 
 			$existing          = $registry[ $slug ];
-			$registry[ $slug ] = $settings->normalize(
+			$registry[ $slug ] = $this->settings->normalize(
 				wp_parse_args( $this->sanitize_instance( $instance ), $existing )
 			);
 		}
