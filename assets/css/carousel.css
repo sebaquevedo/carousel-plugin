@@ -22,6 +22,9 @@
 	/* Gap (mirrors Swiper spaceBetween: 16). */
 	--cwc-gap: 16px;
 
+	/* Cover mode (FA-6): single overlay opacity, theme-overridable. */
+	--cwc-cover-overlay-opacity: 0.45;
+
 	/* Typography. */
 	--cwc-font-family: inherit;
 	--cwc-font-size: 1rem;
@@ -37,6 +40,14 @@
 	margin: 0 0 var( --cwc-gap );
 	font-size: var( --cwc-title-font-size );
 	color: var( --cwc-color-title );
+}
+
+.cwc-carousel__title--center {
+	text-align: center;
+}
+
+.cwc-carousel__title--right {
+	text-align: right;
 }
 
 .cwc-card {
@@ -85,6 +96,9 @@
 	padding: 0 calc( var( --cwc-gap ) * 0.75 );
 	font-size: 0.85em;
 	color: var( --cwc-color-title );
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .cwc-card__buy {
@@ -122,6 +136,51 @@
 	width: 100%;
 	aspect-ratio: 1 / 1;
 	background-color: var( --cwc-color-border );
+}
+
+/**
+ * Cover mode (FA-6): 7/12 cards with a full-bleed image, a single-opacity
+ * overlay and a centered white title. Scoped to .cwc-carousel--cover so
+ * non-cover category carousels and product cards keep today's layout.
+ */
+.cwc-carousel--cover .cwc-category-card {
+	position: relative;
+	aspect-ratio: 7 / 12;
+}
+
+.cwc-carousel--cover .cwc-category-card__link {
+	position: absolute;
+	inset: 0;
+}
+
+.cwc-carousel--cover .cwc-category-card__image,
+.cwc-carousel--cover .cwc-category-card__image--placeholder {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.cwc-carousel--cover .cwc-category-card__overlay {
+	position: absolute;
+	inset: 0;
+	background-color: #000000;
+	opacity: var( --cwc-cover-overlay-opacity );
+}
+
+.cwc-carousel--cover .cwc-category-card__cover-title {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: calc( var( --cwc-gap ) * 0.75 );
+	font-size: var( --cwc-font-size );
+	line-height: 1.4;
+	color: #ffffff;
+	text-align: center;
 }
 
 .cwc-carousel .swiper-button-prev,

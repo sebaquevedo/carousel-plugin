@@ -57,16 +57,30 @@ class CWC_Renderer {
 		$output = '';
 
 		if ( ! empty( $config['title'] ) ) {
-			$output .= '<h2 class="cwc-carousel__title">' . esc_html( $config['title'] ) . '</h2>';
+			$title_class = 'cwc-carousel__title';
+
+			if ( 'center' === $config['title_align'] ) {
+				$title_class .= ' cwc-carousel__title--center';
+			} elseif ( 'right' === $config['title_align'] ) {
+				$title_class .= ' cwc-carousel__title--right';
+			}
+
+			$output .= '<h2 class="' . esc_attr( $title_class ) . '">' . esc_html( $config['title'] ) . '</h2>';
 		}
 
-		$output .= '<div class="cwc-carousel swiper" data-cwc-config="' . esc_attr( wp_json_encode( $config ) ) . '">';
+		$container_class = 'cwc-carousel swiper';
+
+		if ( 'category' === $config['type'] && ! empty( $config['cover'] ) ) {
+			$container_class .= ' cwc-carousel--cover';
+		}
+
+		$output .= '<div class="' . esc_attr( $container_class ) . '" data-cwc-config="' . esc_attr( wp_json_encode( $config ) ) . '">';
 		$output .= '<div class="swiper-wrapper">';
 
 		if ( 'category' === $config['type'] ) {
 			foreach ( $items as $term ) {
 				if ( $term instanceof WP_Term ) {
-					$output .= $this->render_category_card( $term );
+					$output .= $this->render_category_card( $term, $config );
 				}
 			}
 		} else {
@@ -136,10 +150,17 @@ class CWC_Renderer {
 	}
 
 	/**
-	 * Renders the product's primary category line.
+	 * Renders the product's full category-path breadcrumb.
 	 *
-	 * Uses a shallow look at the first assigned product_cat term (escaped), or
-	 * nothing when the product has no category.
+	 * Shows the complete root-to-leaf product_cat path for every assigned
+	 * term, independent of the carousel's `category` scoping (CR-10). Input
+	 * order is pinned by `wc_get_product_term_ids` (name-ASC) and preserved
+	 * by `get_terms(orderby=include)`; for each pinned term the root-to-leaf
+	 * path is rebuilt via `array_reverse( get_ancestors() )` + the term
+	 * itself, the DEEPEST path wins, and on a depth tie the first pinned term
+	 * (name-ASC first) wins. Every segment is escaped and joined with a
+	 * static separator; the full path also rides in the title attribute.
+	 * Products without any category render nothing, as before.
 	 *
 	 * @since 0.1.0
 	 *
@@ -153,13 +174,70 @@ class CWC_Renderer {
 			return '';
 		}
 
-		$term = get_term( (int) $term_ids[0], 'product_cat' );
+		$terms = get_terms(
+			array(
+				'taxonomy'   => 'product_cat',
+				'include'    => $term_ids,
+				'orderby'    => 'include',
+				'hide_empty' => false,
+			)
+		);
 
-		if ( ! $term instanceof WP_Term || '' === $term->name ) {
+		if ( is_wp_error( $terms ) || empty( $terms ) ) {
 			return '';
 		}
 
-		return '<div class="cwc-card__category-line">' . esc_html( $term->name ) . '</div>';
+		$best_path = array();
+
+		foreach ( $terms as $term ) {
+			if ( ! $term instanceof WP_Term ) {
+				continue;
+			}
+
+			// get_ancestors() returns lowest-first; reverse to root-to-leaf,
+			// then append the term itself (CR-10).
+			$path   = array_reverse( get_ancestors( $term->term_id, 'product_cat' ) );
+			$path[] = $term->term_id;
+
+			// Strictly-greater keeps the FIRST pinned term on a depth tie
+			// (name-ASC wins per wc_get_product_term_ids order).
+			if ( count( $path ) > count( $best_path ) ) {
+				$best_path = $path;
+			}
+		}
+
+		if ( empty( $best_path ) ) {
+			return '';
+		}
+
+		$path_terms = get_terms(
+			array(
+				'taxonomy'   => 'product_cat',
+				'include'    => $best_path,
+				'orderby'    => 'include',
+				'hide_empty' => false,
+			)
+		);
+
+		if ( is_wp_error( $path_terms ) || empty( $path_terms ) ) {
+			return '';
+		}
+
+		$segments = array();
+
+		foreach ( $path_terms as $path_term ) {
+			if ( $path_term instanceof WP_Term && '' !== $path_term->name ) {
+				$segments[] = esc_html( $path_term->name );
+			}
+		}
+
+		if ( empty( $segments ) ) {
+			return '';
+		}
+
+		$label = implode( ' › ', $segments );
+
+		return '<div class="cwc-card__category-line" title="' . esc_attr( $label ) . '">' . $label . '</div>';
 	}
 
 	/**
@@ -195,15 +273,80 @@ class CWC_Renderer {
 	 *
 	 * Uses the per-category custom upload (term meta `cwc_cat_image`) when
 	 * present, falling back to the WooCommerce category thumbnail; a safe
-	 * placeholder renders when neither exists (CR-5). The whole card links to
-	 * the category archive via get_term_link().
+	 * placeholder renders when neither exists (CR-5). With cover mode enabled
+	 * the whole card becomes an archive link with a full-bleed image, a
+	 * single-opacity overlay and a centered title on top, and no button or
+	 * caption below (CR-9); the cover title is the sanitized term meta
+	 * `cwc_cat_title` when non-empty, otherwise the escaped term name. With
+	 * cover off, the legacy image + name-below markup is produced unchanged.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param WP_Term $term Category term to render.
+	 * @param WP_Term $term   Category term to render.
+	 * @param array   $config Resolved carousel configuration.
 	 * @return string Escaped category card HTML, or an empty string.
 	 */
-	private function render_category_card( WP_Term $term ): string {
+	private function render_category_card( WP_Term $term, array $config ): string {
+		$image = $this->category_card_image( $term );
+
+		$link = get_term_link( $term, 'product_cat' );
+
+		if ( is_wp_error( $link ) ) {
+			return '';
+		}
+
+		if ( ! empty( $config['cover'] ) ) {
+			$title = get_term_meta( $term->term_id, 'cwc_cat_title', true );
+			$title = sanitize_text_field( (string) $title );
+
+			if ( '' === $title ) {
+				$title = $term->name;
+			}
+
+			return sprintf(
+				'<div class="swiper-slide cwc-category-card cwc-category-card--cover">'
+				. '<a class="cwc-category-card__link" href="%1$s">'
+				. '<span class="cwc-category-card__media">'
+				. '%2$s'
+				. '<span class="cwc-category-card__overlay" aria-hidden="true"></span>'
+				. '<span class="cwc-category-card__cover-title">%3$s</span>'
+				. '</span>'
+				. '</a>'
+				. '</div>',
+				esc_url( $link ),
+				$image,
+				esc_html( $title )
+			);
+		}
+
+		return sprintf(
+			'<div class="swiper-slide cwc-category-card">'
+			. '<a class="cwc-category-card__link" href="%1$s">'
+			. '%2$s'
+			. '<h3 class="cwc-card__title">%3$s</h3>'
+			. '</a>'
+			. '</div>',
+			esc_url( $link ),
+			$image,
+			esc_html( $term->name )
+		);
+	}
+
+	/**
+	 * Returns the category card image markup.
+	 *
+	 * Resolves the image via the per-category custom upload (term meta
+	 * `cwc_cat_image`), then the WooCommerce category thumbnail
+	 * (`thumbnail_id`); a safe placeholder renders when neither exists or the
+	 * attachment is missing/deleted (CR-5). Shared by the cover and legacy
+	 * card branches.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param WP_Term $term Category term to resolve the image for.
+	 * @return string Escaped image HTML.
+	 */
+	private function category_card_image( WP_Term $term ): string {
 		$image_id = (int) get_term_meta( $term->term_id, 'cwc_cat_image', true );
 
 		if ( $image_id <= 0 ) {
@@ -228,22 +371,6 @@ class CWC_Renderer {
 			$image = '<span class="cwc-category-card__image cwc-category-card__image--placeholder" aria-hidden="true"></span>';
 		}
 
-		$link = get_term_link( $term, 'product_cat' );
-
-		if ( is_wp_error( $link ) ) {
-			return '';
-		}
-
-		return sprintf(
-			'<div class="swiper-slide cwc-category-card">'
-			. '<a class="cwc-category-card__link" href="%1$s">'
-			. '%2$s'
-			. '<h3 class="cwc-card__title">%3$s</h3>'
-			. '</a>'
-			. '</div>',
-			esc_url( $link ),
-			$image,
-			esc_html( $term->name )
-		);
+		return $image;
 	}
 }
