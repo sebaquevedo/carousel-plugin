@@ -303,8 +303,7 @@ class CWC_Settings {
 			'buy_text'      => sanitize_text_field( (string) $merged['buy_text'] ),
 			'cover'         => $this->parse_bool( $merged['cover'] ),
 			'subcategories' => $this->parse_bool( $merged['subcategories'] ),
-			'title_align'   => in_array( (string) $merged['title_align'], array( 'center', 'right' ), true )
-				? (string) $merged['title_align'] : 'left',
+			'title_align'   => $this->sanitize_title_align( $merged['title_align'] ),
 		);
 
 		if ( '' === $normalized['buy_text'] ) {
@@ -332,6 +331,40 @@ class CWC_Settings {
 		}
 
 		return filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+	}
+
+	/**
+	 * Returns the valid `title_align` enum values.
+	 *
+	 * Single source of truth for the title-alignment whitelist (D2): the
+	 * settings model's normalize() and the admin's select renderer both consume
+	 * this list, so the renderer options can never drift from the sanitizer.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return string[] Valid title-alignment values (left, center, right).
+	 */
+	public function title_alignments(): array {
+		return array( 'left', 'center', 'right' );
+	}
+
+	/**
+	 * Sanitizes a raw title-alignment value against the enum whitelist.
+	 *
+	 * Any value outside {left, center, right} falls back to `left` — the same
+	 * rule normalize() applies when the merged config carries an invalid or
+	 * absent alignment (D2). The admin's select renderer uses it to pick the
+	 * selected option, and normalize() uses it as the shared coerce point.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param mixed $value Raw title-alignment value.
+	 * @return string Valid alignment: 'left', 'center' or 'right'.
+	 */
+	public function sanitize_title_align( $value ): string {
+		$value = (string) $value;
+
+		return in_array( $value, $this->title_alignments(), true ) ? $value : 'left';
 	}
 
 	/**
