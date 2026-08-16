@@ -16,7 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Whitelists the configurable attributes via shortcode_atts() (unknown
  * attributes are dropped), resolves one per-instance config through
  * CWC_Settings::resolve() (SC-4, SC-5), and dispatches to the query layer:
- * `type=category` fetches terms via CWC_Query::get_categories(), otherwise
+ * `type=category` fetches direct child terms via
+ * CWC_Query::get_child_categories() when `subcategories` is set, otherwise
+ * the explicit categories via CWC_Query::get_categories(); other types fetch
  * products via CWC_Query::query(). The renderer performs the single output
  * escape so the block render path never double-escapes (SC-2, D5).
  *
@@ -47,7 +49,12 @@ class CWC_Shortcode {
 	 * (SC-10, CM-11). The legacy `ids`
 	 * attribute is kept for backwards compatibility: when present it drives
 	 * the manual-ID product query path instead of the resolved selection
-	 * (PQ-2). Always returns a string — never echoes (SC-1).
+	 * (PQ-2). The category branch dispatches on `subcategories`: when true it
+	 * lists the direct children of the parent `category` term via
+	 * CWC_Query::get_child_categories() (taking precedence over the explicit
+	 * `categories` selection, D3); otherwise the explicit `categories`/`category`
+	 * selection is used as today (PQ-6). Always returns a string — never echoes
+	 * (SC-1).
 	 *
 	 * @since 0.1.0
 	 *
@@ -88,7 +95,9 @@ class CWC_Shortcode {
 		$renderer = new CWC_Renderer();
 
 		if ( 'category' === $config['type'] ) {
-			$items = $query->get_categories( $config['categories'] );
+			$items = ! empty( $config['subcategories'] )
+				? $query->get_child_categories( $config['category'] )
+				: $query->get_categories( $config['categories'] );
 		} else {
 			if ( '' !== $atts['ids'] ) {
 				$query_args = array(

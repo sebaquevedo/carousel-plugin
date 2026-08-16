@@ -128,8 +128,11 @@ class CWC_Query {
 	 * single tax_query with the default IN operator — the list is never silently
 	 * dropped when mix is off (PQ-5); `mix` stays an explicit flag but is not a
 	 * precondition for the filter. Otherwise a single positive $category id
-	 * scopes the carousel to that one term (PQ-4). An empty sanitized selection
-	 * yields no filter. No raw SQL is used in either mode.
+	 * scopes the carousel to that one term (PQ-4). Both modes set
+	 * `include_children => true` explicitly (PQ-7) so products assigned to
+	 * descendant subcategories of a scoped term are included without relying on
+	 * the WordPress default. An empty sanitized selection yields no filter. No
+	 * raw SQL is used in either mode.
 	 *
 	 * @since 0.1.0
 	 *
@@ -157,9 +160,10 @@ class CWC_Query {
 		if ( ! empty( $categories ) ) {
 			return array(
 				array(
-					'taxonomy' => 'product_cat',
-					'field'    => 'term_id',
-					'terms'    => $categories,
+					'taxonomy'         => 'product_cat',
+					'field'            => 'term_id',
+					'terms'            => $categories,
+					'include_children' => true,
 				),
 			);
 		}
@@ -167,9 +171,10 @@ class CWC_Query {
 		if ( $category > 0 ) {
 			return array(
 				array(
-					'taxonomy' => 'product_cat',
-					'field'    => 'term_id',
-					'terms'    => array( $category ),
+					'taxonomy'         => 'product_cat',
+					'field'            => 'term_id',
+					'terms'            => array( $category ),
+					'include_children' => true,
 				),
 			);
 		}
@@ -210,6 +215,50 @@ class CWC_Query {
 				'include'    => $term_ids,
 				'hide_empty' => true,
 				'orderby'    => 'include',
+			)
+		);
+
+		if ( is_wp_error( $terms ) ) {
+			return array();
+		}
+
+		return $terms;
+	}
+
+	/**
+	 * Fetches the direct child terms of a product_cat parent.
+	 *
+	 * Lists only depth-1 children (never grandchildren) of the parent term,
+	 * ordered by name, using the WordPress terms API (no raw SQL). Mirrors
+	 * get_categories() by hiding empty terms, so a child with no products is
+	 * omitted (PQ-6). A parent id of zero or a non-existent parent term yields
+	 * an empty array without error.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param int $parent_id Sanitized positive product_cat parent term id.
+	 * @return WP_Term[] Direct child category terms (may be empty).
+	 */
+	public function get_child_categories( int $parent_id ): array {
+		$parent_id = absint( $parent_id );
+
+		if ( $parent_id <= 0 ) {
+			return array();
+		}
+
+		$parent = get_term( $parent_id, 'product_cat' );
+
+		if ( ! $parent instanceof WP_Term ) {
+			return array();
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => 'product_cat',
+				'parent'     => $parent_id,
+				'hide_empty' => true,
+				'orderby'    => 'name',
+				'order'      => 'ASC',
 			)
 		);
 
