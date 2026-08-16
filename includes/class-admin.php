@@ -96,7 +96,7 @@ class CWC_Admin {
 	 * @since 0.1.0
 	 * @var string
 	 */
-	private $meta_key = 'cwc_cat_image';
+	private $image_meta_key = 'cwc_cat_image';
 
 	/**
 	 * Term meta key holding the per-category overlay title.
@@ -703,11 +703,13 @@ class CWC_Admin {
 	/**
 	 * Renders the cover-mode checkbox (category carousels only).
 	 *
-	 * Only rendered for `type=category` carousels (CCC-1/AS-9): a hidden
-	 * `value="0"` companion posts '0' when unchecked so sanitize_instance()
-	 * round-trips `false` losslessly (same pattern as the controls/buy fields,
-	 * AS-4/D6). Product carousels never see the field — `cover` is ignored for
-	 * `type=product` at render time.
+	 * Only rendered for `type=category` carousels (CCC-1/AS-9): render_editor()
+	 * gates the row on `type === category` before calling this renderer, so the
+	 * method needs no second guard. A hidden `value="0"` companion posts '0'
+	 * when unchecked so sanitize_instance() round-trips `false` losslessly
+	 * (same pattern as the controls/buy fields, AS-4/D6). Product carousels
+	 * never see the field — `cover` is ignored for `type=product` at render
+	 * time.
 	 *
 	 * @since 0.1.0
 	 *
@@ -716,10 +718,6 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_cover_field( string $prefix, array $current ) {
-		if ( 'category' !== $current['type'] ) {
-			return;
-		}
-
 		$output = '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[cover]" value="0" />'
 			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[cover]" value="1"'
 			. checked( ! empty( $current['cover'] ), true, false ) . ' /> '
@@ -757,9 +755,11 @@ class CWC_Admin {
 	/**
 	 * Renders the title-alignment select (center | left | right).
 	 *
-	 * Mirrors the sanitize_instance()/normalize() whitelist (D2): any value
-	 * outside the enum falls back to `left` on save, and the re-render selects
-	 * `left` too. Applies to the carousel heading for every type (CR-8).
+	 * The options are built from the shared CWC_Settings::title_alignments()
+	 * enum (D2), so the select can never drift from the settings model's
+	 * whitelist: any value outside the enum sanitizes back to `left` on save,
+	 * and the re-render selects `left` too. Applies to the carousel heading
+	 * for every type (CR-8).
 	 *
 	 * @since 0.1.0
 	 *
@@ -768,14 +768,20 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_title_align_field( string $prefix, array $current ) {
-		$selected = in_array( (string) $current['title_align'], array( 'center', 'right' ), true )
-			? (string) $current['title_align']
-			: 'left';
+		$selected = $this->settings->sanitize_title_align( $current['title_align'] );
+
+		$labels = array(
+			'left'   => __( 'Left', 'cwc-carousel' ),
+			'center' => __( 'Center', 'cwc-carousel' ),
+			'right'  => __( 'Right', 'cwc-carousel' ),
+		);
 
 		echo '<select name="' . esc_attr( $prefix ) . '[title_align]">';
-		echo '<option value="left"' . selected( $selected, 'left', false ) . '>' . esc_html__( 'Left', 'cwc-carousel' ) . '</option>';
-		echo '<option value="center"' . selected( $selected, 'center', false ) . '>' . esc_html__( 'Center', 'cwc-carousel' ) . '</option>';
-		echo '<option value="right"' . selected( $selected, 'right', false ) . '>' . esc_html__( 'Right', 'cwc-carousel' ) . '</option>';
+
+		foreach ( $this->settings->title_alignments() as $align ) {
+			echo '<option value="' . esc_attr( $align ) . '"' . selected( $selected, $align, false ) . '>' . esc_html( $labels[ $align ] ) . '</option>';
+		}
+
 		echo '</select>';
 	}
 
@@ -838,7 +844,7 @@ class CWC_Admin {
 				continue;
 			}
 
-			$image_id = (int) get_term_meta( $term->term_id, $this->meta_key, true );
+			$image_id = (int) get_term_meta( $term->term_id, $this->image_meta_key, true );
 			$preview  = ( $image_id > 0 ) ? wp_get_attachment_image( $image_id, 'thumbnail' ) : '';
 			$title    = sanitize_text_field( (string) get_term_meta( $term->term_id, $this->title_meta_key, true ) );
 
@@ -916,19 +922,23 @@ class CWC_Admin {
 				}
 
 				if ( $attachment_id > 0 ) {
-					update_term_meta( $term_id, $this->meta_key, $attachment_id );
+					update_term_meta( $term_id, $this->image_meta_key, $attachment_id );
 				} else {
-					delete_term_meta( $term_id, $this->meta_key );
+					delete_term_meta( $term_id, $this->image_meta_key );
 				}
 			}
 		}
 
 		if ( $has_titles ) {
 			// Coerce every posted value to text up-front (mirrors the absint
-			// map on cwc_cat_images); sanitize_text_field() returns '' for
-			// crafted non-scalar values, which clears the meta like an empty
-			// title (AS-10).
-			$titles = array_map( 'sanitize_text_field', wp_unslash( $_POST['cwc_cat_titles'] ) );
+			// map on cwc_cat_images). sanitize_text_field() does NOT return ''
+			// for crafted non-scalar values — it fatals with a TypeError under
+			// PHP 8 — so the is_scalar guard clears them to '' first, which
+			// then deletes the meta like an empty title (AS-10).
+			$titles = array_map(
+				static fn( $value ) => is_scalar( $value ) ? sanitize_text_field( $value ) : '',
+				wp_unslash( $_POST['cwc_cat_titles'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Unslashed here; the closure sanitizes every scalar with sanitize_text_field() and clears non-scalars to ''.
+			);
 
 			foreach ( $titles as $term_id => $title ) {
 				$term_id = absint( $term_id );
@@ -1153,10 +1163,12 @@ class CWC_Admin {
 	 * validated/coerced here, exactly once — slides 1-12, gap 8-64, count int
 	 * ≥ 0, categories as positive ids, buy as a boolean, buy_text as text, type
 	 * within {product, category}. Unknown or invalid keys are normalized to
-	 * their defaults, never resurrected from the raw post (CM-2). The
-	 * cover-mode keys coerce like the rest of the contract (AS-9): bools via
-	 * parse_bool, `title_align` whitelisted to {center, right} else `left` —
-	 * the exact same rules CWC_Settings::normalize() applies (D2/D5).
+	 * their defaults, never resurrected from the raw post (CM-2). The cover
+	 * keys (`cover`, `subcategories`, `title_align`) pass through raw:
+	 * CWC_Settings::normalize() runs unconditionally downstream on both call
+	 * sites (create_instance() and sanitize_registry()) and owns their coercion
+	 * — parse_bool for the two booleans, the title_align enum for the alignment
+	 * (D2/D5) — so this method does not repeat it.
 	 *
 	 * @since 0.1.0
 	 *
@@ -1167,14 +1179,11 @@ class CWC_Admin {
 		$input = ( is_array( $input ) ) ? $input : array();
 		$built = $this->settings->builtins();
 
-		$type          = isset( $input['type'] ) ? $input['type'] : $built['type'];
-		$arrows        = isset( $input['arrows'] ) ? $input['arrows'] : $built['arrows'];
-		$pagination    = isset( $input['pagination'] ) ? $input['pagination'] : $built['pagination'];
-		$buy           = isset( $input['buy'] ) ? $input['buy'] : $built['buy'];
-		$text          = isset( $input['buy_text'] ) ? $input['buy_text'] : $built['buy_text'];
-		$cover         = isset( $input['cover'] ) ? $input['cover'] : $built['cover'];
-		$subcategories = isset( $input['subcategories'] ) ? $input['subcategories'] : $built['subcategories'];
-		$title_align   = isset( $input['title_align'] ) ? $input['title_align'] : $built['title_align'];
+		$type       = isset( $input['type'] ) ? $input['type'] : $built['type'];
+		$arrows     = isset( $input['arrows'] ) ? $input['arrows'] : $built['arrows'];
+		$pagination = isset( $input['pagination'] ) ? $input['pagination'] : $built['pagination'];
+		$buy        = isset( $input['buy'] ) ? $input['buy'] : $built['buy'];
+		$text       = isset( $input['buy_text'] ) ? $input['buy_text'] : $built['buy_text'];
 
 		return array(
 			'type'          => ( 'category' === $type ) ? 'category' : 'product',
@@ -1188,10 +1197,9 @@ class CWC_Admin {
 			'pagination'    => $this->settings->parse_bool( $pagination ),
 			'buy'           => $this->settings->parse_bool( $buy ),
 			'buy_text'      => $this->clean_text( $text, $built['buy_text'] ),
-			'cover'         => $this->settings->parse_bool( $cover ),
-			'subcategories' => $this->settings->parse_bool( $subcategories ),
-			'title_align'   => in_array( (string) $title_align, array( 'center', 'right' ), true )
-				? (string) $title_align : 'left',
+			'cover'         => $input['cover'] ?? $built['cover'],
+			'subcategories' => $input['subcategories'] ?? $built['subcategories'],
+			'title_align'   => $input['title_align'] ?? $built['title_align'],
 		);
 	}
 
