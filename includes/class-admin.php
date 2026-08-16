@@ -99,6 +99,18 @@ class CWC_Admin {
 	private $meta_key = 'cwc_cat_image';
 
 	/**
+	 * Term meta key holding the per-category overlay title.
+	 *
+	 * Must match the renderer's cover-title lookup (CR-9) so a saved title is
+	 * what the cover card actually shows (AS-10). An empty value deletes the
+	 * meta so the renderer falls back to the term name.
+	 *
+	 * @since 0.1.0
+	 * @var string
+	 */
+	private $title_meta_key = 'cwc_cat_title';
+
+	/**
 	 * Shared settings model instance backing every registry read/write.
 	 *
 	 * @since 0.1.0
@@ -433,6 +445,20 @@ class CWC_Admin {
 						<th scope="row"><?php esc_html_e( 'Categories', 'cwc-carousel' ); ?></th>
 						<td><?php $this->render_categories_field( $prefix, $current ); ?></td>
 					</tr>
+					<?php if ( 'category' === $current['type'] ) : ?>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Cover mode', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_cover_field( $prefix, $current ); ?></td>
+					</tr>
+					<?php endif; ?>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Subcategories', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_subcategories_field( $prefix, $current ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Title alignment', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_title_align_field( $prefix, $current ); ?></td>
+					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Slides', 'cwc-carousel' ); ?></th>
 						<td><?php $this->render_slides_field( $prefix, $current ); ?></td>
@@ -675,11 +701,93 @@ class CWC_Admin {
 	}
 
 	/**
+	 * Renders the cover-mode checkbox (category carousels only).
+	 *
+	 * Only rendered for `type=category` carousels (CCC-1/AS-9): a hidden
+	 * `value="0"` companion posts '0' when unchecked so sanitize_instance()
+	 * round-trips `false` losslessly (same pattern as the controls/buy fields,
+	 * AS-4/D6). Product carousels never see the field — `cover` is ignored for
+	 * `type=product` at render time.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
+	 * @return void
+	 */
+	public function render_cover_field( string $prefix, array $current ) {
+		if ( 'category' !== $current['type'] ) {
+			return;
+		}
+
+		$output = '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[cover]" value="0" />'
+			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[cover]" value="1"'
+			. checked( ! empty( $current['cover'] ), true, false ) . ' /> '
+			. esc_html__( 'Show cover cards', 'cwc-carousel' ) . '</label>'
+			. '<p class="description">' . esc_html__( 'Render portrait cards with a full-bleed image and a centered overlay title.', 'cwc-carousel' ) . '</p>';
+
+		// phpcs:ignore WordPress.Security.EscapeOutput -- checked() returns escaped HTML (core escaping function).
+		echo $output;
+	}
+
+	/**
+	 * Renders the subcategories checkbox.
+	 *
+	 * When checked, a `type=category` carousel lists the parent's direct child
+	 * terms instead of the explicit `categories` selection (CCC-5). A hidden
+	 * `value="0"` companion keeps the round-trip lossless (AS-4/D6).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
+	 * @return void
+	 */
+	public function render_subcategories_field( string $prefix, array $current ) {
+		$output = '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[subcategories]" value="0" />'
+			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[subcategories]" value="1"'
+			. checked( ! empty( $current['subcategories'] ), true, false ) . ' /> '
+			. esc_html__( 'Show subcategories', 'cwc-carousel' ) . '</label>'
+			. '<p class="description">' . esc_html__( 'List direct child categories instead of the selected categories.', 'cwc-carousel' ) . '</p>';
+
+		// phpcs:ignore WordPress.Security.EscapeOutput -- checked() returns escaped HTML (core escaping function).
+		echo $output;
+	}
+
+	/**
+	 * Renders the title-alignment select (center | left | right).
+	 *
+	 * Mirrors the sanitize_instance()/normalize() whitelist (D2): any value
+	 * outside the enum falls back to `left` on save, and the re-render selects
+	 * `left` too. Applies to the carousel heading for every type (CR-8).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
+	 * @return void
+	 */
+	public function render_title_align_field( string $prefix, array $current ) {
+		$selected = in_array( (string) $current['title_align'], array( 'center', 'right' ), true )
+			? (string) $current['title_align']
+			: 'left';
+
+		echo '<select name="' . esc_attr( $prefix ) . '[title_align]">';
+		echo '<option value="left"' . selected( $selected, 'left', false ) . '>' . esc_html__( 'Left', 'cwc-carousel' ) . '</option>';
+		echo '<option value="center"' . selected( $selected, 'center', false ) . '>' . esc_html__( 'Center', 'cwc-carousel' ) . '</option>';
+		echo '<option value="right"' . selected( $selected, 'right', false ) . '>' . esc_html__( 'Right', 'cwc-carousel' ) . '</option>';
+		echo '</select>';
+	}
+
+	/**
 	 * Renders the per-category custom image override group (AS-3).
 	 *
-	 * A row with a hidden attachment-id input, a preview, and an Upload button
+	 * A row with a hidden attachment-id input, a preview, an Upload button
 	 * renders for each chosen category. The hidden input carries the term id so
-	 * admin.js can drive wp.media per term. Saving is handled separately by
+	 * admin.js can drive wp.media per term. Each row also carries a text input
+	 * for the cover overlay title (`cwc_cat_titles[term_id]`), pre-filled from
+	 * the existing `cwc_cat_title` term meta (AS-10); the renderer reads it for
+	 * the cover card's centered title (CR-9). Saving is handled separately by
 	 * save_category_images() to keep term side-effects out of the sanitizer.
 	 *
 	 * @since 0.1.0
@@ -732,6 +840,7 @@ class CWC_Admin {
 
 			$image_id = (int) get_term_meta( $term->term_id, $this->meta_key, true );
 			$preview  = ( $image_id > 0 ) ? wp_get_attachment_image( $image_id, 'thumbnail' ) : '';
+			$title    = sanitize_text_field( (string) get_term_meta( $term->term_id, $this->title_meta_key, true ) );
 
 			printf(
 				'<div class="cwc-category-image-row" data-term-id="%1$d">'
@@ -740,30 +849,41 @@ class CWC_Admin {
 				. '<button type="button" class="button cwc-cat-image-upload">%4$s</button>'
 				. '<button type="button" class="button-link-delete cwc-cat-image-remove">%5$s</button>'
 				. '<p class="cwc-cat-image-term">%6$s</p>'
+				. '<p><label for="cwc-cat-title-%1$d">' . esc_html__( 'Overlay title', 'cwc-carousel' ) . '</label> '
+				. '<input type="text" id="cwc-cat-title-%1$d" name="cwc_cat_titles[%1$d]" value="%7$s" class="cwc-cat-title-input" /></p>'
 				. '</div>',
 				(int) $term->term_id,
 				$preview, // phpcs:ignore WordPress.Security.EscapeOutput -- wp_get_attachment_image() escapes internally.
 				absint( $image_id ),
 				esc_html__( 'Choose image', 'cwc-carousel' ),
 				esc_html__( 'Remove image', 'cwc-carousel' ),
-				esc_html( $term->name )
+				esc_html( $term->name ),
+				esc_attr( $title )
 			);
 		}
 	}
 
 	/**
-	 * Persists per-category image overrides submitted with the settings form.
+	 * Persists per-category image overrides and overlay titles submitted with
+	 * the settings form.
 	 *
 	 * Runs on admin_init so it sees the same POST the Settings API processes;
 	 * the form passes a dedicated nonce and capability so term writes never
 	 * cross into the pure option sanitizer (D7). An empty value clears the
-	 * override, the uploads the value comes from the media library.
+	 * override, the uploads the value comes from the media library. The
+	 * `cwc_cat_titles` array (AS-10) rides the same nonce + capability gate as
+	 * `cwc_cat_images` (D5): each title is sanitized with sanitize_text_field,
+	 * the term is re-validated via get_term(), and an empty title deletes the
+	 * meta so the renderer falls back to the term name (CR-9).
 	 *
 	 * @since 0.1.0
 	 * @return void
 	 */
 	public function save_category_images() {
-		if ( ! isset( $_POST['cwc_cat_images'] ) || ! is_array( $_POST['cwc_cat_images'] ) ) {
+		$has_images = isset( $_POST['cwc_cat_images'] ) && is_array( $_POST['cwc_cat_images'] );
+		$has_titles = isset( $_POST['cwc_cat_titles'] ) && is_array( $_POST['cwc_cat_titles'] );
+
+		if ( ! $has_images && ! $has_titles ) {
 			return;
 		}
 
@@ -775,29 +895,59 @@ class CWC_Admin {
 
 		check_admin_referer( $this->image_nonce_action, $this->image_nonce_field );
 
-		$images = array_map( 'absint', wp_unslash( $_POST['cwc_cat_images'] ) );
+		if ( $has_images ) {
+			$images = array_map( 'absint', wp_unslash( $_POST['cwc_cat_images'] ) );
 
-		foreach ( $images as $term_id => $attachment_id ) {
-			if ( $term_id <= 0 ) {
-				continue;
+			foreach ( $images as $term_id => $attachment_id ) {
+				if ( $term_id <= 0 ) {
+					continue;
+				}
+
+				$term = get_term( $term_id, 'product_cat' );
+
+				if ( ! $term instanceof WP_Term ) {
+					continue;
+				}
+
+				// Only accept an existing image attachment (R1-W2); anything else
+				// clears the override so the renderer falls back to the thumbnail.
+				if ( $attachment_id > 0 && ! wp_attachment_is_image( $attachment_id ) ) {
+					continue;
+				}
+
+				if ( $attachment_id > 0 ) {
+					update_term_meta( $term_id, $this->meta_key, $attachment_id );
+				} else {
+					delete_term_meta( $term_id, $this->meta_key );
+				}
 			}
+		}
 
-			$term = get_term( $term_id, 'product_cat' );
+		if ( $has_titles ) {
+			// Coerce every posted value to text up-front (mirrors the absint
+			// map on cwc_cat_images); sanitize_text_field() returns '' for
+			// crafted non-scalar values, which clears the meta like an empty
+			// title (AS-10).
+			$titles = array_map( 'sanitize_text_field', wp_unslash( $_POST['cwc_cat_titles'] ) );
 
-			if ( ! $term instanceof WP_Term ) {
-				continue;
-			}
+			foreach ( $titles as $term_id => $title ) {
+				$term_id = absint( $term_id );
 
-			// Only accept an existing image attachment (R1-W2); anything else
-			// clears the override so the renderer falls back to the thumbnail.
-			if ( $attachment_id > 0 && ! wp_attachment_is_image( $attachment_id ) ) {
-				continue;
-			}
+				if ( $term_id <= 0 ) {
+					continue;
+				}
 
-			if ( $attachment_id > 0 ) {
-				update_term_meta( $term_id, $this->meta_key, $attachment_id );
-			} else {
-				delete_term_meta( $term_id, $this->meta_key );
+				$term = get_term( $term_id, 'product_cat' );
+
+				if ( ! $term instanceof WP_Term ) {
+					continue;
+				}
+
+				if ( '' === $title ) {
+					delete_term_meta( $term_id, $this->title_meta_key );
+				} else {
+					update_term_meta( $term_id, $this->title_meta_key, $title );
+				}
 			}
 		}
 	}
@@ -938,7 +1088,7 @@ class CWC_Admin {
 	 * Each posted slug is slugified into its storage key and sanitized via
 	 * sanitize_instance(); every other registry key is left untouched.
 	 * Non-edited contract keys (title/category/mix) are preserved from the
-	 * stored value, and the merged result is normalized to the full 14-key
+	 * stored value, and the merged result is normalized to the full resolved
 	 * contract via CWC_Settings::normalize() (D5). The create placeholder
 	 * `__new__` is never written here.
 	 *
@@ -1003,7 +1153,10 @@ class CWC_Admin {
 	 * validated/coerced here, exactly once — slides 1-12, gap 8-64, count int
 	 * ≥ 0, categories as positive ids, buy as a boolean, buy_text as text, type
 	 * within {product, category}. Unknown or invalid keys are normalized to
-	 * their defaults, never resurrected from the raw post (CM-2).
+	 * their defaults, never resurrected from the raw post (CM-2). The
+	 * cover-mode keys coerce like the rest of the contract (AS-9): bools via
+	 * parse_bool, `title_align` whitelisted to {center, right} else `left` —
+	 * the exact same rules CWC_Settings::normalize() applies (D2/D5).
 	 *
 	 * @since 0.1.0
 	 *
@@ -1014,11 +1167,14 @@ class CWC_Admin {
 		$input = ( is_array( $input ) ) ? $input : array();
 		$built = $this->settings->builtins();
 
-		$type       = isset( $input['type'] ) ? $input['type'] : $built['type'];
-		$arrows     = isset( $input['arrows'] ) ? $input['arrows'] : $built['arrows'];
-		$pagination = isset( $input['pagination'] ) ? $input['pagination'] : $built['pagination'];
-		$buy        = isset( $input['buy'] ) ? $input['buy'] : $built['buy'];
-		$text       = isset( $input['buy_text'] ) ? $input['buy_text'] : $built['buy_text'];
+		$type          = isset( $input['type'] ) ? $input['type'] : $built['type'];
+		$arrows        = isset( $input['arrows'] ) ? $input['arrows'] : $built['arrows'];
+		$pagination    = isset( $input['pagination'] ) ? $input['pagination'] : $built['pagination'];
+		$buy           = isset( $input['buy'] ) ? $input['buy'] : $built['buy'];
+		$text          = isset( $input['buy_text'] ) ? $input['buy_text'] : $built['buy_text'];
+		$cover         = isset( $input['cover'] ) ? $input['cover'] : $built['cover'];
+		$subcategories = isset( $input['subcategories'] ) ? $input['subcategories'] : $built['subcategories'];
+		$title_align   = isset( $input['title_align'] ) ? $input['title_align'] : $built['title_align'];
 
 		return array(
 			'type'          => ( 'category' === $type ) ? 'category' : 'product',
@@ -1032,6 +1188,10 @@ class CWC_Admin {
 			'pagination'    => $this->settings->parse_bool( $pagination ),
 			'buy'           => $this->settings->parse_bool( $buy ),
 			'buy_text'      => $this->clean_text( $text, $built['buy_text'] ),
+			'cover'         => $this->settings->parse_bool( $cover ),
+			'subcategories' => $this->settings->parse_bool( $subcategories ),
+			'title_align'   => in_array( (string) $title_align, array( 'center', 'right' ), true )
+				? (string) $title_align : 'left',
 		);
 	}
 
