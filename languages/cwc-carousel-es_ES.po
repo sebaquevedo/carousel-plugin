@@ -1,0 +1,70 @@
+# Copyright (C) 2026 Custom Woo Pro Carousel contributors
+# This file is distributed under the same license as the Custom Woo Pro Carousel plugin.
+msgid ""
+msgstr ""
+"Project-Id-Version: Custom Woo Pro Carousel 0.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/sebaquevedo/carousel-plugin\n"
+"POT-Creation-Date: 2026-08-16 18:00+0000\n"
+"PO-Revision-Date: 2026-08-16 18:00+0000\n"
+"Last-Translator: Custom Woo Pro Carousel contributors\n"
+"Language-Team: Spanish (Spain) <https://github.com/sebaquevedo/carousel-plugin>\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: hand-authored (SDD CCC-6)\n"
+"X-Domain: cwc-carousel\n"
+
+#. Cover-mode editor row label (AS-9).
+#: includes/class-admin.php
+msgid "Cover mode"
+msgstr "Modo portada"
+
+#. Cover-mode checkbox label (AS-9).
+#: includes/class-admin.php
+msgid "Show cover cards"
+msgstr "Mostrar tarjetas de portada"
+
+#. Cover-mode checkbox description (AS-9).
+#: includes/class-admin.php
+msgid "Render portrait cards with a full-bleed image and a centered overlay title."
+msgstr "Muestra tarjetas verticales con imagen a sangre completa y un título centrado superpuesto."
+
+#. Subcategories editor row label (AS-9).
+#: includes/class-admin.php
+msgid "Subcategories"
+msgstr "Subcategorías"
+
+#. Subcategories checkbox label (AS-9).
+#: includes/class-admin.php
+msgid "Show subcategories"
+msgstr "Mostrar subcategorías"
+
+#. Subcategories checkbox description (AS-9).
+#: includes/class-admin.php
+msgid "List direct child categories instead of the selected categories."
+msgstr "Lista las categorías hijas directas en lugar de las categorías seleccionadas."
+
+#. Title-alignment editor row label (AS-9).
+#: includes/class-admin.php
+msgid "Title alignment"
+msgstr "Alineación del título"
+
+#. Title-alignment select options (AS-9).
+#: includes/class-admin.php
+msgid "Left"
+msgstr "Izquierda"
+
+#: includes/class-admin.php
+msgid "Center"
+msgstr "Centro"
+
+#: includes/class-admin.php
+msgid "Right"
+msgstr "Derecha"
+
+#. Per-category overlay title input label (AS-10).
+#: includes/class-admin.php
+msgid "Overlay title"
+msgstr "Título superpuesto"
