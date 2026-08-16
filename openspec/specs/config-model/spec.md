@@ -132,20 +132,28 @@ an explicit attribute wins over the instance config (CM-2 order preserved).
 - THEN the base is `productos` and resolved count is 4
 - AND all non-overridden keys come from the `productos` instance
 
-### Requirement: CM-9 — Per-instance 14-key contract preserved
+### Requirement: CM-9 — Per-instance 17-key contract preserved
 
-Each resolved instance MUST expose exactly the 14-key config contract
+Each resolved instance MUST expose exactly the 17-key config contract
 (`type`, `title`, `category`, `categories`, `mix`, `count`, `slides`,
 `slides_tablet`, `slides_mobile`, `gap`, `arrows`, `pagination`, `buy`,
-`buy_text`) via `normalize()`. The instance base MUST merge over `builtins()` so
-any absent per-instance key fills its builtin and booleans stay typed (`parse_bool`).
+`buy_text`, `cover`, `subcategories`, `title_align`) via `normalize()`. The
+instance base MUST merge over `builtins()` so any absent per-instance key fills
+its builtin and booleans stay typed (`parse_bool`).
 
 #### Scenario: Partial instance fills from builtins
 
 - GIVEN an instance config omitting `buy`/`gap`
 - WHEN resolved
 - THEN `buy` and `gap` carry the builtin values
-- AND every config serializes through `wp_json_encode` with all 14 keys (CM-4)
+- AND every config serializes through `wp_json_encode` with all 17 keys (CM-4)
+
+#### Scenario: New keys present on legacy instances
+
+- GIVEN a stored instance saved before this change (no new keys)
+- WHEN resolved
+- THEN `cover` and `subcategories` resolve false and `title_align` resolves `left`
+- AND the instance renders identically to before (BC)
 
 ### Requirement: CM-10 — Seeds define exact instance defaults
 
@@ -164,3 +172,30 @@ registry is never auto-overwritten once present):
 - GIVEN a freshly seeded registry
 - WHEN `resolve(['name' => 'productos'])` runs
 - THEN base resolves to 3/2/1 slides with arrows+pagination ON
+
+### Requirement: CM-11 — Cover-mode config keys
+
+`builtins()`, `normalize()` and the `$known` whitelist MUST include `cover`
+(bool, default false), `subcategories` (bool, default false) and `title_align`
+(enum `center`|`left`|`right`, default `left`). An invalid `title_align` value
+MUST coerce to `left`; an empty-string shortcode attribute MUST fall through to
+the instance/builtin default.
+
+#### Scenario: Defaults when absent
+
+- GIVEN a config with none of the three keys
+- WHEN `normalize()` runs
+- THEN `cover`=false, `subcategories`=false, `title_align`=`left`
+
+#### Scenario: Explicit values resolve
+
+- GIVEN `[cwc_carousel cover="1" subcategories="1" title_align="center"]`
+- WHEN `resolve()` runs
+- THEN the resolved config carries cover=true, subcategories=true, title_align=`center`
+
+#### Scenario: Invalid title_align coerced
+
+- GIVEN `title_align="diagonal"`
+- WHEN `normalize()` runs
+- THEN `title_align` coerces to `left`
+- AND resolution succeeds without error

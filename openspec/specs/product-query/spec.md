@@ -123,3 +123,73 @@ enabled; `mix` stays an explicit flag but is not a precondition.
 - GIVEN `categories` sanitizes to no valid term ids
 - WHEN the query runs
 - THEN an empty result is returned without error
+
+### Requirement: PQ-6 — Subcategory listing (direct children)
+
+When `subcategories` is true, the query layer MUST return the direct child terms
+(depth 1, `product_cat`) of the parent `category` term id instead of the explicit
+`categories` selection, using the WordPress terms API (no raw SQL). The children
+listing MUST use `hide_empty => true` (mirrors `get_categories()`), so a child
+term with no products is omitted. A parent id of 0 or a non-existent parent MUST
+yield an empty array without error.
+
+#### Scenario: Children of a parent listed
+
+- GIVEN `subcategories` true and a parent `category` id with children A and B
+- WHEN the query runs
+- THEN WP_Term[] A and B are returned (depth 1 only, no grandchildren)
+
+#### Scenario: Empty child term omitted
+
+- GIVEN `subcategories` true and a parent `category` id with children A, B (with products) and C (no products)
+- WHEN the query runs
+- THEN only A and B are returned (`hide_empty => true`)
+- AND child C is omitted
+
+#### Scenario: Empty or invalid parent
+
+- GIVEN `subcategories` true and `category` = 0 (or a non-existent term id)
+- WHEN the query runs
+- THEN an empty array is returned
+- AND no error is raised
+
+#### Scenario: Disabled keeps explicit selection
+
+- GIVEN `subcategories` false
+- WHEN the query runs
+- THEN the explicit `categories`/`category` selection is used as today (PQ-4/PQ-5)
+
+### Requirement: PQ-7 — Explicit subcategory inclusion (include_children)
+
+When the product carousel filters by a parent `category` term, the `tax_query`
+MUST set `include_children => true` explicitly — never relying on the WP
+default — so products assigned to descendant subcategories of the scoped
+category are included. The same explicit flag MUST be applied when filtering
+by the `categories` list (IN query). Products outside the scoped subtree MUST
+NOT be returned.
+
+#### Scenario: Child subcategory product included
+
+- GIVEN a carousel scoped to parent category X and a product assigned only to child subcategory Y of X
+- WHEN the product query runs
+- THEN the product is returned
+- AND the `tax_query` carries an explicit `include_children => true`
+
+#### Scenario: Deeper descendant included
+
+- GIVEN a carousel scoped to parent category X and a product assigned only to grandchild Z (X › Y › Z)
+- WHEN the product query runs
+- THEN the product is returned (recursive descendant inclusion)
+
+#### Scenario: Outside the subtree excluded
+
+- GIVEN a carousel scoped to parent category X and a product assigned only to unrelated category W
+- WHEN the product query runs
+- THEN the product is NOT returned
+
+#### Scenario: Categories list mode includes children
+
+- GIVEN a carousel filtering by a `categories` list (IN query) and a product assigned to a child subcategory of a listed term
+- WHEN the product query runs
+- THEN the product is returned
+- AND the list query also sets `include_children => true` explicitly
