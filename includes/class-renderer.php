@@ -227,7 +227,7 @@ class CWC_Renderer {
 
 		foreach ( $path_terms as $path_term ) {
 			if ( $path_term instanceof WP_Term && '' !== $path_term->name ) {
-				$segments[] = esc_html( $path_term->name );
+				$segments[] = $path_term->name;
 			}
 		}
 
@@ -235,9 +235,12 @@ class CWC_Renderer {
 			return '';
 		}
 
+		// Keep raw names in $label and escape once at each output point, so the
+		// title attribute is not double-escaped (esc_html + esc_attr would
+		// re-encode entities like &amp; -> &amp;amp;).
 		$label = implode( ' › ', $segments );
 
-		return '<div class="cwc-card__category-line" title="' . esc_attr( $label ) . '">' . $label . '</div>';
+		return '<div class="cwc-card__category-line" title="' . esc_attr( $label ) . '">' . esc_html( $label ) . '</div>';
 	}
 
 	/**
