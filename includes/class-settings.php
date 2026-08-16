@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * option (autoload off, CM-7) and `resolve()` selects the named instance — or
  * the reserved `default`, never fatal (CM-8) — as the merge base. The
  * registry is read-only here: the admin writes it (AS-5) and the bootstrap
- * seeds it once (PB-4). Every resolved instance exposes exactly the 14-key
+ * seeds it once (PB-4). Every resolved instance exposes exactly the 17-key
  * contract via `normalize()` (CM-9).
  *
  * @since 0.1.0
@@ -77,7 +77,7 @@ class CWC_Settings {
 	public function resolve( array $atts ): array {
 		// The `name` attribute selects the instance whose config becomes the
 		// merge base. It is consumed before the empty-string filter so it can
-		// never participate in attribute layering or leak into the 14-key
+		// never participate in attribute layering or leak into the 17-key
 		// contract (SC-8, CM-9). An absent/empty name resolves the reserved
 		// `default` instance — today's behavior (CM-8).
 		$name = isset( $atts['name'] ) ? (string) $atts['name'] : '';
@@ -118,6 +118,9 @@ class CWC_Settings {
 			'pagination'    => $base['pagination'],
 			'buy'           => $base['buy'],
 			'buy_text'      => $base['buy_text'],
+			'cover'         => $base['cover'],
+			'subcategories' => $base['subcategories'],
+			'title_align'   => $base['title_align'],
 		);
 
 		return $this->normalize( wp_parse_args( $atts, $known ) );
@@ -171,7 +174,7 @@ class CWC_Settings {
 	 * @since 0.1.0
 	 *
 	 * @param string $name Instance slug (may be empty for the default).
-	 * @return array Normalized 14-key config for the base.
+	 * @return array Normalized 17-key config for the base.
 	 */
 	public function instance_base( string $name ): array {
 		$registry = $this->registry();
@@ -198,7 +201,7 @@ class CWC_Settings {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array { slug => normalized 14-key config } for the two seeds.
+	 * @return array { slug => normalized 17-key config } for the two seeds.
 	 */
 	public function seeds(): array {
 		return array(
@@ -257,6 +260,9 @@ class CWC_Settings {
 			'pagination'    => true,
 			'buy'           => true,
 			'buy_text'      => 'Comprar',
+			'cover'         => false,
+			'subcategories' => false,
+			'title_align'   => 'left',
 		);
 	}
 
@@ -295,6 +301,10 @@ class CWC_Settings {
 			'pagination'    => $this->parse_bool( $merged['pagination'] ),
 			'buy'           => $this->parse_bool( $merged['buy'] ),
 			'buy_text'      => sanitize_text_field( (string) $merged['buy_text'] ),
+			'cover'         => $this->parse_bool( $merged['cover'] ),
+			'subcategories' => $this->parse_bool( $merged['subcategories'] ),
+			'title_align'   => in_array( (string) $merged['title_align'], array( 'center', 'right' ), true )
+				? (string) $merged['title_align'] : 'left',
 		);
 
 		if ( '' === $normalized['buy_text'] ) {

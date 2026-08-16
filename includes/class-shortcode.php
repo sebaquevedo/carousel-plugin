@@ -40,7 +40,11 @@ class CWC_Shortcode {
 	 * dispatches by type. `name` selects a registered instance as the merge
 	 * base (absent → reserved `default`, SC-8) and `slides_tablet`,
 	 * `slides_mobile` and `gap` are whitelisted so per-instance overrides
-	 * reach resolve() instead of being dropped (SC-9). The legacy `ids`
+	 * reach resolve() instead of being dropped (SC-9). `cover`,
+	 * `subcategories` and `title_align` are likewise whitelisted so cover-mode
+	 * attributes reach resolve(); an empty string (missing att) falls through
+	 * to the instance/builtin default, and coercion lives in CWC_Settings
+	 * (SC-10, CM-11). The legacy `ids`
 	 * attribute is kept for backwards compatibility: when present it drives
 	 * the manual-ID product query path instead of the resolved selection
 	 * (PQ-2). Always returns a string — never echoes (SC-1).
@@ -68,6 +72,9 @@ class CWC_Shortcode {
 				'pagination'    => '',
 				'buy'           => '',
 				'buy_text'      => '',
+				'cover'         => '',
+				'subcategories' => '',
+				'title_align'   => '',
 				'ids'           => '',
 			),
 			$atts,
