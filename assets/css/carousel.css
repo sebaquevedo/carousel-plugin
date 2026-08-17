@@ -7,10 +7,21 @@
  * assets (FA-3, CR-3). Swiper's 16px spaceBetween mirrors --cwc-gap.
  */
 
+/**
+ * Title tokens live at :root (not on .cwc-carousel) because the title <h2>
+ * renders as a SIBLING of the carousel container — container-scoped custom
+ * properties never resolve there, which silently drops the title's margin,
+ * font-size and color.
+ */
+:root {
+	--cwc-color-title: #1a1a1a;
+	--cwc-title-font-size: 1.5rem;
+	--cwc-title-gap: 24px; /* Breathing room below the section title. */
+}
+
 .cwc-carousel {
 	/* Colors. */
 	--cwc-color-text: #1a1a1a;
-	--cwc-color-title: #1a1a1a;
 	--cwc-color-border: #e5e5e5;
 	--cwc-color-background: #ffffff;
 	--cwc-color-accent: #96588a; /* WooCommerce default primary. */
@@ -28,7 +39,6 @@
 	/* Typography. */
 	--cwc-font-family: inherit;
 	--cwc-font-size: 1rem;
-	--cwc-title-font-size: 1.5rem;
 
 	margin: 0 0 calc( var( --cwc-gap ) * 2 );
 	font-family: var( --cwc-font-family );
@@ -37,7 +47,7 @@
 }
 
 .cwc-carousel__title {
-	margin: 0 0 var( --cwc-gap );
+	margin: 0 0 var( --cwc-title-gap );
 	font-size: var( --cwc-title-font-size );
 	color: var( --cwc-color-title );
 }
