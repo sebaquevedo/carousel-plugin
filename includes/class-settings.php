@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * option (autoload off, CM-7) and `resolve()` selects the named instance — or
  * the reserved `default`, never fatal (CM-8) — as the merge base. The
  * registry is read-only here: the admin writes it (AS-5) and the bootstrap
- * seeds it once (PB-4). Every resolved instance exposes exactly the 17-key
+ * seeds it once (PB-4). Every resolved instance exposes exactly the 18-key
  * contract via `normalize()` (CM-9).
  *
  * @since 0.1.0
@@ -77,7 +77,7 @@ class CWC_Settings {
 	public function resolve( array $atts ): array {
 		// The `name` attribute selects the instance whose config becomes the
 		// merge base. It is consumed before the empty-string filter so it can
-		// never participate in attribute layering or leak into the 17-key
+		// never participate in attribute layering or leak into the 18-key
 		// contract (SC-8, CM-9). An absent/empty name resolves the reserved
 		// `default` instance — today's behavior (CM-8).
 		$name = isset( $atts['name'] ) ? (string) $atts['name'] : '';
@@ -121,6 +121,7 @@ class CWC_Settings {
 			'cover'         => $base['cover'],
 			'subcategories' => $base['subcategories'],
 			'title_align'   => $base['title_align'],
+			'products'      => $base['products'],
 		);
 
 		return $this->normalize( wp_parse_args( $atts, $known ) );
@@ -174,7 +175,7 @@ class CWC_Settings {
 	 * @since 0.1.0
 	 *
 	 * @param string $name Instance slug (may be empty for the default).
-	 * @return array Normalized 17-key config for the base.
+	 * @return array Normalized 18-key config for the base.
 	 */
 	public function instance_base( string $name ): array {
 		$registry = $this->registry();
@@ -198,10 +199,11 @@ class CWC_Settings {
 	 * values match CM-10: `productos` is a product carousel at 3/2/1 with
 	 * arrows, pagination and buy on; `categorias` is a category carousel at
 	 * 4/2/1 with arrows and pagination on (buy/buy_text carry their builtins).
+	 * Both seeds define an empty `products` list (CM-10).
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array { slug => normalized 17-key config } for the two seeds.
+	 * @return array { slug => normalized 18-key config } for the two seeds.
 	 */
 	public function seeds(): array {
 		return array(
@@ -216,6 +218,7 @@ class CWC_Settings {
 					'arrows'        => true,
 					'pagination'    => true,
 					'buy'           => true,
+					'products'      => array(),
 				)
 			),
 			'categorias' => $this->normalize(
@@ -228,6 +231,7 @@ class CWC_Settings {
 					'count'         => 8,
 					'arrows'        => true,
 					'pagination'    => true,
+					'products'      => array(),
 				)
 			),
 		);
@@ -263,6 +267,7 @@ class CWC_Settings {
 			'cover'         => false,
 			'subcategories' => false,
 			'title_align'   => 'left',
+			'products'      => array(),
 		);
 	}
 
@@ -304,6 +309,7 @@ class CWC_Settings {
 			'cover'         => $this->parse_bool( $merged['cover'] ),
 			'subcategories' => $this->parse_bool( $merged['subcategories'] ),
 			'title_align'   => $this->sanitize_title_align( $merged['title_align'] ),
+			'products'      => $this->sanitize_ids( $merged['products'] ),
 		);
 
 		if ( '' === $normalized['buy_text'] ) {
