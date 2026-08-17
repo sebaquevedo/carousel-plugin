@@ -49,7 +49,12 @@ class CWC_Shortcode {
 	 * (SC-10, CM-11). The legacy `ids`
 	 * attribute is kept for backwards compatibility: when present it drives
 	 * the manual-ID product query path instead of the resolved selection
-	 * (PQ-2). The category branch dispatches on `subcategories`: when true it
+	 * (PQ-2). The `products` attribute is whitelisted so a resolved non-empty
+	 * list renders those exact products in manual order (orderby=post__in),
+	 * ignoring `count`; an empty (or fully coerced-away) `products` leaves the
+	 * latest-N path unchanged (SC-11, BC). Precedence for the product branch
+	 * is: legacy `ids` attribute > resolved `products` > latest-N. The
+	 * category branch dispatches on `subcategories`: when true it
 	 * lists the direct children of the parent `category` term via
 	 * CWC_Query::get_child_categories() (taking precedence over the explicit
 	 * `categories` selection, D3); otherwise the explicit `categories`/`category`
@@ -82,6 +87,7 @@ class CWC_Shortcode {
 				'cover'         => '',
 				'subcategories' => '',
 				'title_align'   => '',
+				'products'      => '',
 				'ids'           => '',
 			),
 			$atts,
@@ -102,6 +108,14 @@ class CWC_Shortcode {
 			if ( '' !== $atts['ids'] ) {
 				$query_args = array(
 					'ids' => $settings->sanitize_ids( $atts['ids'] ),
+				);
+			} elseif ( ! empty( $config['products'] ) ) {
+				// Non-empty resolved products override the latest-N fallback:
+				// an ordered manual-ID list (orderby=post__in) where `count`
+				// is ignored (SC-11). The list is already sanitized by
+				// normalize() via sanitize_ids().
+				$query_args = array(
+					'ids' => $config['products'],
 				);
 			} else {
 				$query_args = array(
