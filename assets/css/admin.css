@@ -1,0 +1,104 @@
+/**
+ * Admin picker styles: chip list, drag handle, empty-state CTA.
+ *
+ * The picker widgets PRs 3-4 render wrap each enhanced <select> in a
+ * .cwc-picker container that also holds the visible .cwc-chip-list and the
+ * empty-state CTA. Until that markup exists every rule here is inert — the
+ * current Carousel screen matches no .cwc-picker element (FA-5, D3).
+ *
+ * The companion chip list is the visible source of truth for the selection
+ * order; selectWoo's native chips stay hidden so the inline AJAX search
+ * input keeps working. Everything is scoped under .cwc-picker so no other
+ * Select2 widget on the screen is affected.
+ */
+
+/* Hide selectWoo's native chips; the sortable .cwc-chip-list renders the
+   selection instead (D3). The selection box keeps its search input. */
+.cwc-picker .select2-selection__choice {
+	display: none;
+}
+
+/* Keep the inline search input reachable once the native chips are hidden
+   (PRs 3-4 refine this against the real markup). */
+.cwc-picker .select2-selection--multiple {
+	min-height: 38px;
+	padding: 4px 5px;
+}
+
+/* Sortable chip list — the visible, draggable projection of the select. */
+.cwc-chip-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 12px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* An empty list takes no space; the empty-state CTA (toggled by admin.js)
+   is what the user sees before the first selection (AS-12). */
+.cwc-chip-list:empty {
+	display: none;
+}
+
+.cwc-chip {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	border: 1px solid #ccd0d4;
+	border-radius: 4px;
+	background: #fff;
+}
+
+/* Drag grip: the Braille vertical-ellipsis glyph needs no icon font. */
+.cwc-chip-handle {
+	flex: 0 0 auto;
+	cursor: move;
+	color: #787c82;
+	font-size: 16px;
+	line-height: 1;
+}
+
+.cwc-chip-handle::before {
+	content: '\2807';
+}
+
+.cwc-chip-thumb {
+	flex: 0 0 auto;
+}
+
+.cwc-chip-thumb img {
+	display: block;
+	width: 32px;
+	height: 32px;
+	object-fit: cover;
+	border-radius: 3px;
+}
+
+.cwc-chip-name {
+	flex: 1 1 auto;
+	overflow-wrap: anywhere;
+}
+
+.cwc-chip-remove {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: #b32d2e;
+	cursor: pointer;
+	font-size: 16px;
+	line-height: 1;
+}
+
+.cwc-chip-remove:hover {
+	color: #8a2424;
+}
+
+/* Empty-state call to action: "Add products" until the first selection
+   (AS-12). admin.js toggles the hidden attribute; the .button styling comes
+   from WP core. */
+.cwc-empty-cta {
+	margin-top: 12px;
+}
