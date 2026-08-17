@@ -38,9 +38,9 @@ Chain base: main or previous PR branch (orchestrator resolves `chain_strategy`).
 
 ## Phase 2: Admin Assets (PR 2)
 
-- [ ] 2.1 `includes/class-assets.php`: gated enqueue (cap `manage_woocommerce`): `wc-enhanced-select`, `woocommerce_admin_styles`, `jquery-ui-sortable`, `admin.css`; `wp_localize_script` `cwcCarouselAdmin` (FA-5)
-- [ ] 2.2 `assets/css/admin.css` (create): chip list, hidden `.select2-selection__choice`, drag handle, empty-state CTA (D3)
-- [ ] 2.3 `assets/js/admin.js`: localized strings (drop 2 hardcoded Spanish); uploader reuse; sortable sync + chip rebuild
+- [x] 2.1 `includes/class-assets.php`: gated enqueue (cap `manage_woocommerce`): `wc-enhanced-select`, `woocommerce_admin_styles`, `jquery-ui-sortable`, `admin.css`; `wp_localize_script` `cwcCarouselAdmin` (FA-5)
+- [x] 2.2 `assets/css/admin.css` (create): chip list, hidden `.select2-selection__choice`, drag handle, empty-state CTA (D3)
+- [x] 2.3 `assets/js/admin.js`: localized strings (drop 2 hardcoded Spanish); uploader reuse; sortable sync + chip rebuild
 
 **Acceptance**: handles + localized object on gated screen only; fields unchanged.
 

@@ -77,3 +77,73 @@ None — implementation matches design.md. Details:
 ## Status
 
 4/4 Phase 1 tasks complete. Ready for review (PR #13, do not merge until reviewed).
+
+---
+
+# Apply Progress — Panel UX (Slice 2 / PR 2)
+
+## Slice 2: Phase 2 — Admin Assets (PR 2) — COMPLETE
+
+- **Branch**: `feat/panel-ux-assets` (base: tracker `feat/panel-ux` @ `21c7283`, the squashed PR 1)
+- **PR**: #14 — https://github.com/sebaquevedo/carousel-plugin/pull/14
+- **Chain strategy**: feature-branch-chain — PR 2 targets the tracker branch; PRs 3–4 target the immediate previous PR branch.
+- **Date**: 2026-08-17
+
+## Tasks completed
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 2.1 | `class-assets.php`: gated enqueue (cap `manage_woocommerce`): `wc-enhanced-select`, `woocommerce_admin_styles`, `jquery-ui-sortable`, `admin.css`; `wp_localize_script` `cwcCarouselAdmin` (FA-5) | [x] |
+| 2.2 | `assets/css/admin.css` (create): chip list, hidden `.select2-selection__choice`, drag handle, empty-state CTA (D3) | [x] |
+| 2.3 | `assets/js/admin.js`: localized strings (drop 2 hardcoded Spanish); uploader reuse; sortable sync + chip rebuild | [x] |
+
+## Files changed
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `includes/class-assets.php` | Modified | `enqueue_admin_assets()` (unchanged screen + `manage_woocommerce` gates) now also enqueues `woocommerce_admin_styles` (style), `wc-enhanced-select` (script), `jquery-ui-sortable` (script dep), and the new `assets/css/admin.css` (style, dep on `woocommerce_admin_styles`, same `cwc-carousel-admin` handle as the script); admin.js deps grow from `['jquery']` to `['jquery','jquery-ui-sortable','wc-enhanced-select']`; `wp_localize_script` registers `cwcCarouselAdmin` with `mediaTitle`, `mediaButton`, `sortHandle`, `removeChip` (task 2.1, FA-5) |
+| `assets/css/admin.css` | Created | Scoped under `.cwc-picker`: hides native `.select2-selection__choice` chips (D3), keeps the inline search input usable, styles the sortable `.cwc-chip-list`/`.cwc-chip` (handle grip, 32px thumb, name, remove), and the `.cwc-empty-cta` (task 2.2, D3). Inert until PRs 3–4 render `.cwc-picker` markup. |
+| `assets/js/admin.js` | Modified | Restructured into `initUploaders()` + `initPickers()`; the 2 hardcoded Spanish media strings now come from `cwcCarouselAdmin.mediaTitle/.mediaButton` (FA-5); uploader behavior unchanged; added inert picker scaffolding — `makeSortable()` (jQuery UI sortable, `stop` → `syncSelectOrder()` reorders `<option>`s to chip order), `rebuildChipList()` (`option:checked` → chips, toggles CTA `hidden`), `createChip()` (`li[data-id]` with handle/thumb/name/remove; remove deselects + fires bubbling `change`). No `.cwc-picker` markup exists yet, so the scaffolding matches nothing (task 2.3, D1/D3). |
+| `openspec/changes/panel-ux/tasks.md` | Modified | Phase 2 tasks 2.1–2.3 marked `[x]` |
+| `openspec/changes/panel-ux/apply-progress.md` | Modified | This slice-2 section appended (continuity artifact) |
+
+## Commits (slice branch `feat/panel-ux-assets`)
+
+| Hash | Message |
+|------|---------|
+| `6b7b40c` | feat(admin): gate and enqueue panel admin assets with localized JS strings (FA-5) |
+| `59274d5` | feat(admin): add admin stylesheet for picker chips and empty-state CTA (D3) |
+| `c9484e6` | feat(admin): localize admin JS strings and add inert sortable chip scaffolding (FA-5) |
+| `e3c1b9e` | docs(sdd): mark panel-ux Phase 2 tasks complete and record apply progress |
+
+## Verification results
+
+- `php -l includes/class-assets.php` → **no syntax errors**.
+- `composer phpcs` (full repo, WPCS) → **clean** (exit 0, no output).
+- `node --check assets/js/admin.js` → **JS syntax OK**.
+
+## Deviations from design
+
+None — implementation matches design.md:
+
+- FA-5 enqueue list implemented exactly (D7 + FA-5): `wc-enhanced-select`, `woocommerce_admin_styles`, `jquery-ui-sortable`, `admin.css`, plus the pre-existing `wp_enqueue_media()`.
+- The `cwcCarouselAdmin` object exposes the 2 media strings (the FA-5 requirement) plus `sortHandle`/`removeChip` so the chip scaffolding has no hardcoded literals either ("all JS-facing strings").
+- admin.css is fully scoped under `.cwc-picker`, so the `display:none` on `.select2-selection__choice` can never affect other Select2 widgets on the screen.
+- admin.js keeps the uploader byte-equivalent in behavior; only the string source changed (localized object instead of hardcoded Spanish).
+
+## Notes / observations for slices 3–4 and verify
+
+1. **es_ES interim state (accepted within the chain)**: the 2 media strings move from hardcoded Spanish to English-source `__()` strings; they are NOT yet in `languages/*` (no matches in the .po). Task 3.3 re-extracts + recompiles via `tools/make-mo.php` (AS-14), restoring es_ES and adding the PR 3 strings. The design's ".mo recompile must ship in the same change" is satisfied at chain completion (3.3/4.3). Verify phase: confirm es_ES translations exist after PR 3.
+2. **Scaffolding contract for PRs 3–4**: JS matches `.cwc-picker > select[multiple]` + `.cwc-chip-list` + `.cwc-empty-cta`; chips are `li[data-id]`; `<option>` order = submitted order (D1). PHP must pre-render `<option selected>` in stored order; `data-thumb` on an option feeds the chip thumbnail. PR 3 should swap `createChip`'s remove (bubbling DOM `change`) for selectWoo's own trigger if the enhanced select starts owning visible state.
+3. **Inert-ness confirmed**: `wc-enhanced-select` only auto-inits classes `wc-category-search`/`wc-product-search`/`wc-enhanced-select` — the current select class is `cwc-categories-select`, so no enhancement occurs. `jquery-ui-sortable` only acts on explicit `.sortable()` calls (none). admin.css matches no `.cwc-picker`. No field markup changed.
+4. **BC check**: `woocommerce_admin_styles` now loads on the Carousel screen (visual only, intended — Select2 chrome). Field semantics, option names, save paths unchanged.
+
+## Remaining slices
+
+- PR 3: Phase 3 — categories picker (`select.wc-category-search` pre-render, AS-11) + inline image/title edit + languages recompile (AS-3/AS-14).
+- PR 4: Phase 4 — products picker (`select.wc-product-search`, gated `type=product`, AS-12/AS-5) + chip CTA + languages final recompile.
+- Phase 5: security audit + verification per PR.
+
+## Status
+
+3/3 Phase 2 tasks complete. Ready for review (PR #14, do not merge until reviewed).
