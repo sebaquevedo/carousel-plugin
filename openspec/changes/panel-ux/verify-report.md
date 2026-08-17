@@ -2,6 +2,7 @@
 
 > Written 2026-08-17 on `feat/panel-ux` @ `7c2d6da` (PRs #13–#16 merged, working tree clean).
 > **Re-verified 2026-08-17 on `feat/panel-ux` @ `6f851a0`** (AS-14 corrective fix, PR #17 merged) — see [Re-verification (AS-14 fix)](#re-verification-as-14-fix). Verdict upgraded **FAIL → PASS**.
+> **Post-verify additions re-verified 2026-08-17 on `feat/panel-ux` @ `483647e`** (commits `850fe12`, `6c99d5b`, `7a9d475`; working tree has the uncommitted AS-15 spec text) — see [Post-verify additions re-verification](#post-verify-additions-re-verification). Verdict extended **PASS → PASS (19/19)**.
 
 ## Verification Report
 
@@ -138,3 +139,67 @@ Re-created a temp probe (`tools/probe-i18n-reverify.php`, removed after the run 
 AS-14 "es_ES translated" is now **COMPLIANT**: the es_ES catalog is complete (72/72 msgids, 0 missing, 0 fuzzy) and the Spanish admin loads translations at runtime with no English fallback. Verdict upgraded **FAIL → PASS (18/18)**.
 
 **Informational** (no action): the regenerated `.pot`/`.po` use CRLF line endings (Windows) — harmless, but the next regeneration may normalize to LF depending on the writing environment.
+
+---
+
+## Post-verify additions re-verification
+
+> Executed 2026-08-17 on `feat/panel-ux` @ `483647e` (working tree clean except the **uncommitted AS-15 spec text** in `openspec/changes/panel-ux/specs/admin-settings/spec.md` — the delta spec gained AS-15 after the last verify; commit `7a9d475` implemented it). Three commits landed after the last verify: `850fe12` (picker selection fix), `6c99d5b` (title CSS tokens at `:root`), `7a9d475` (editable display title + products-picker hint + i18n). Focused re-check of what changed; all prior evidence above remains intact.
+
+### AS-15 — Editable display title: **COMPLIANT** (runtime evidence)
+
+Run in wp-env (`wp eval-file` probe, 15 assertions, exit 0; probe removed after the run — `tools/` ships only `make-mo.php` as before):
+
+| Check | Result |
+|-------|--------|
+| Editor renders `[title]` input (`name="cwc_carousel_registry[cover-test][title]"`, `maxlength="100"`) via `render_editor()` → `render_title_field()` | ✅ |
+| Description renders **translated** on the es_ES editor (`Título que se muestra encima del carrusel. Déjalo vacío para ocultarlo.`) — bonus AS-14 signal from the same render | ✅ |
+| `sanitize_registry()` (the registered `sanitize_callback`, i.e. the exact options.php save path) coerces hostile `title` (`<script>…</script>Spring Collection` + whitespace) → `Spring Collection` via `clean_text()` = `sanitize_text_field` | ✅ |
+| Blank title (`"   \t "`) → `''`; missing `title` key → `''` (fallback empty, AS-15/AS-5) | ✅ |
+| Non-empty title → shortcode render emits `<h2 class="cwc-carousel__title cwc-carousel__title--center">Spring Collection</h2>` (CR-1; `--center` because `cover-test` uses `title_align=center`) | ✅ |
+| Empty title → heading omitted; carousel still renders (2764 chars, no `cwc-carousel__title`, no stray title text) | ✅ |
+| Registry restored to its pre-probe state (`cover-test` back to `Cover Test`) | ✅ |
+
+Round-trip proven end-to-end: sanitize (editor save path) → `update_option` → `do_shortcode` render. `Title round-trips` and `Empty title hides heading` both **COMPLIANT**.
+
+### i18n: catalog 72 → 74, still complete
+
+`languages/cwc-carousel.pot` vs `languages/cwc-carousel-es_ES.po` (gettext parse, header excluded; `.pot`/`.po` use CRLF — parser tolerant):
+
+| Metric | Value |
+|--------|-------|
+| POT msgids | **74** (72 prior + `Title` + `Display title shown above the carousel. Leave empty to hide it.`; the products-picker hint string was **replaced**, not added, so the net delta is +2) |
+| PO entries | **74** |
+| Translated (non-empty, non-fuzzy msgstr) | **74/74** |
+| Missing / extra-in-PO | 0 / 0 |
+| Fuzzy | 0 |
+| `.mo` recompiled | ✅ via commit `7a9d475` (6527 bytes, newer than the `.po`) |
+
+Runtime on the es_ES site (same probe): `Title` → `Título`, the display-title description → `Título que se muestra encima del carrusel. Déjalo vacío para ocultarlo.`, and the new products-picker hint → `Añadir productos muestra exactamente estos artículos en este orden e ignora el filtro de categorías de arriba. Si se deja vacío, se muestran automáticamente los productos más recientes de las categorías seleccionadas.` Full sweep of all 74 `.pot` msgids: **73/74 resolve**; the sole identical-to-source msgid remains the intentional proper noun `Custom Woo Pro Carousel`. AS-14 remains **COMPLIANT**.
+
+### Static checks
+
+| Command | Result |
+|---------|--------|
+| `php -l includes/class-admin.php` | ✅ No syntax errors |
+| `node --check assets/js/admin.js` | ✅ OK |
+| `composer phpcs` (full repo, WPCS) | ✅ exit 0, no violations (after removing the temp probe; the probe itself is not part of the change) |
+
+### Manual verification note (no automated claim)
+
+- `850fe12` picker selection fix (selectWoo `select2:select`/`select2:unselect` → `rebuildChipList`, `width: 100%` on `.select2-container`/`.select2-search__field`, `String( item.term_id )` id coercion) — **browser behavior the user verified manually**; recorded as manual verification, **no automated coverage claimed**.
+- `6c99d5b` title-margin CSS fix (carousel title tokens moved to `:root` so the `<h2>` sibling resolves `--cwc-title-gap`/`--cwc-title-font-size`/`--cwc-color-title`) — **browser behavior the user verified manually**; recorded as manual verification, **no automated coverage claimed**. Static sanity: the CSS change is scoped to `assets/css/carousel.css` and the renderer's h2 markup (verified above) matches the `.cwc-carousel__title` selector.
+
+### Issues Found (additions)
+
+**CRITICAL**: None.
+
+**WARNING**: None.
+
+**SUGGESTION**
+- `tasks.md` has no task row for AS-15 (the requirement was added to the spec after apply and implemented by commit `7a9d475`). Consider adding a `[x]` row (e.g. under Phase 4/5) for traceability before archive.
+- The AS-15 spec text in `openspec/changes/panel-ux/specs/admin-settings/spec.md` is **uncommitted** — sdd-archive's spec sync will need this working-tree delta committed (or re-applied) so the archived spec matches the reviewed delta.
+
+### Verdict (post-verify additions)
+
+**PASS — 19/19 requirements compliant** (18 prior + AS-15 with both scenarios). AS-15 round-trip, CR-1 heading behavior, i18n 74/74 completeness, and all static checks pass with runtime evidence; the two browser-behavior fixes are covered by manual verification.

@@ -40,6 +40,22 @@ All admin-facing strings MUST be translatable with the plugin text domain; the t
 - WHEN the admin page renders
 - THEN no admin string falls back to English
 
+### Requirement: AS-15 — Editable display title
+
+The editor MUST render a "Title" text field — independent of the instance slug (shortcode `name`) — that edits the `title` config key via `sanitize_text_field` (`clean_text`, fallback empty). A non-empty title MUST render as the carousel heading; an empty title MUST omit the heading (CR-1).
+
+#### Scenario: Title round-trips
+
+- GIVEN a carousel whose Title is set to "Spring Collection"
+- WHEN the editor saves
+- THEN `title` stores "Spring Collection" and the front end renders it as the heading
+
+#### Scenario: Empty title hides heading
+
+- GIVEN a carousel with an empty Title
+- WHEN the carousel renders
+- THEN no heading is emitted
+
 ## MODIFIED Requirements
 
 ### Requirement: AS-3 — Per-category image and overlay title (chip inline)
@@ -67,7 +83,7 @@ For each chosen `product_cat` term, the category chip MUST offer inline controls
 
 ### Requirement: AS-5 — Registry option with per-slug sanitizer
 
-The plugin MUST store named carousels in one registered keyed array `cwc_carousel_registry` (`{ slug => full_config }`, autoload off). Its sanitize callback MUST run per slug, scoped as `cwc_carousel_registry[slug][key]`, reusing today's field bounds (type within {product,category}, slides 1-12, gap 8-64, count ≥ 0, bools via `parse_bool`, `buy_text` via `clean_text`), and MUST additionally coerce `products` via `sanitize_ids()` (absint, values ≤ 0 dropped, fallback `[]`). The page and all saves MUST stay gated by `manage_woocommerce` (AS-1).
+The plugin MUST store named carousels in one registered keyed array `cwc_carousel_registry` (`{ slug => full_config }`, autoload off). Its sanitize callback MUST run per slug, scoped as `cwc_carousel_registry[slug][key]`, reusing today's field bounds (type within {product,category}, slides 1-12, gap 8-64, count ≥ 0, bools via `parse_bool`, `buy_text` and `title` via `clean_text`), and MUST additionally coerce `products` via `sanitize_ids()` (absint, values ≤ 0 dropped, fallback `[]`). The page and all saves MUST stay gated by `manage_woocommerce` (AS-1).
 (Previously: 17-key instances, no `products`.)
 
 #### Scenario: Save scoped per slug

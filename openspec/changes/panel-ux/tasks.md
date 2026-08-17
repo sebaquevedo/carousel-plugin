@@ -63,4 +63,11 @@ Chain base: main or previous PR branch (orchestrator resolves `chain_strategy`).
 ## Phase 5: Security & Verification
 
 - [x] 5.1 Audit: nonce on every save, cap `manage_woocommerce`, `wp_unslash` + `sanitize_ids` on `[categories][]`/`[products][]`, escape output, term-meta permissions (AS-1/AS-5)
-- [ ] 5.2 `php -l` + phpcs + `node --check assets/js/admin.js` per PR; wp-env smoke (create/edit/type-switch/drag/save; legacy BC)
+- [x] 5.2 `php -l` + phpcs + `node --check assets/js/admin.js` per PR; wp-env smoke (create/edit/type-switch/drag/save; legacy BC)
+
+## Phase 6: Post-verify additions (testing session)
+
+- [x] 6.1 `includes/class-admin.php`: "Title" text field (`render_title_field` + `sanitize_instance` `title` via `clean_text`, AS-15) + products-picker relationship hint (AS-12)
+- [x] 6.2 `assets/js/admin.js` + `admin.css`: picker select-to-chip fix (`select2:select`/`select2:unselect` + string id) + full-width search input
+- [x] 6.3 `assets/css/carousel.css`: title tokens moved to `:root` so the sibling `<h2>` resolves margin/font/color
+- [x] 6.4 `languages/*`: "Title" + display-title description + hint; recompile (74/74 msgids)
