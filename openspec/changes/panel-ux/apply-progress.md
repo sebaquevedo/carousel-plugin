@@ -114,7 +114,7 @@ None — implementation matches design.md. Details:
 | `6b7b40c` | feat(admin): gate and enqueue panel admin assets with localized JS strings (FA-5) |
 | `59274d5` | feat(admin): add admin stylesheet for picker chips and empty-state CTA (D3) |
 | `c9484e6` | feat(admin): localize admin JS strings and add inert sortable chip scaffolding (FA-5) |
-| `e3c1b9e` | docs(sdd): mark panel-ux Phase 2 tasks complete and record apply progress |
+| `cd71784` | docs(sdd): mark panel-ux Phase 2 tasks complete and record apply progress |
 
 ## Verification results
 
