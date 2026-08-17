@@ -28,10 +28,15 @@ class CWC_Query {
 	 * manual IDs are supplied (PQ-1). When an `ids` argument is present, the
 	 * list is parsed with wp_parse_id_list(), sanitized with absint(), values
 	 * <= 0 are dropped, and the requested order is preserved via
-	 * orderby=post__in (PQ-2). An explicit but fully-invalid ID list yields an
-	 * empty result — the recent-products default is NOT substituted
-	 * (PQ-2/SC-3). A limit of zero returns an empty result before any query
-	 * runs (PQ-1, D7).
+	 * orderby=post__in (PQ-2); the `limit` is lifted to the list length so
+	 * every assigned ID renders (never truncated at the default 8). The ids
+	 * branch also passes every registered
+	 * product type plus `variation` so manually selected variations round-trip
+	 * (D4): the data store then queries post_type ['product_variation',
+	 * 'product'] with an OR product_type tax_query. An explicit but
+	 * fully-invalid ID list yields an empty result — the recent-products
+	 * default is NOT substituted (PQ-2/SC-3). A limit of zero returns an empty
+	 * result before any query runs (PQ-1, D7).
 	 *
 	 * @since 0.1.0
 	 *
@@ -101,6 +106,19 @@ class CWC_Query {
 
 			$query_args['include'] = $ids;
 			$query_args['orderby'] = 'post__in';
+
+			// Manual-ID lists (the `products` key and the legacy `ids`
+			// attribute) must render ALL assigned IDs in order: lift the
+			// default `limit => 8` so WC's posts_per_page never truncates the
+			// list (SC-11 — exact IDs in order, `count` ignored).
+			$query_args['limit'] = count( $ids );
+
+			// Variations round-trip: WC's default `type` (from
+			// wc_get_product_types()) excludes `variation`, so including a
+			// variation id returns nothing. Passing every registered type plus
+			// `variation` makes the data store query post_type
+			// ['product_variation','product'] and match the ids (D4).
+			$query_args['type'] = array_merge( array_keys( wc_get_product_types() ), array( 'variation' ) );
 		}
 
 		$category_filter = $this->category_filter( $args );
