@@ -1,125 +1,323 @@
 # Copyright (C) 2026 Custom Woo Pro Carousel contributors
-# This file is distributed under the same license as the Custom Woo Pro Carousel plugin.
+# This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
 "Project-Id-Version: Custom Woo Pro Carousel 0.1.0\n"
-"Report-Msgid-Bugs-To: https://github.com/sebaquevedo/carousel-plugin\n"
-"POT-Creation-Date: 2026-08-17 12:00+0000\n"
-"PO-Revision-Date: 2026-08-17 12:00+0000\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/carousel-plugin\n"
 "Last-Translator: Custom Woo Pro Carousel contributors\n"
 "Language-Team: Spanish (Spain) <https://github.com/sebaquevedo/carousel-plugin>\n"
 "Language: es_ES\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-08-17T16:16:43+00:00\n"
+"PO-Revision-Date: 2026-08-17 16:20+0000\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: hand-authored (SDD CCC-6)\n"
+"X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: cwc-carousel\n"
 
-#. Cover-mode editor row label (AS-9).
-#: includes/class-admin.php
+#. Plugin Name of the plugin
+#: custom-woo-pro-carousel.php
+msgid "Custom Woo Pro Carousel"
+msgstr "Custom Woo Pro Carousel"
+
+#. Description of the plugin
+#: custom-woo-pro-carousel.php
+msgid "A modular WooCommerce product carousel plugin powered by Swiper."
+msgstr "Un plugin modular de carrusel de productos para WooCommerce, impulsado por Swiper."
+
+#. Author of the plugin
+#: custom-woo-pro-carousel.php
+msgid "Custom Woo Pro Carousel contributors"
+msgstr "Colaboradores de Custom Woo Pro Carousel"
+
+#: includes/class-admin.php:148
+#: includes/class-admin.php:149
+msgid "Carousel"
+msgstr "Carrusel"
+
+#: includes/class-admin.php:242
+msgid "Carousels"
+msgstr "Carruseles"
+
+#: includes/class-admin.php:244
+msgid "Each named carousel holds its own full configuration. Render one with [cwc_carousel name=\"slug\"]; without a name the reserved \"default\" instance applies."
+msgstr "Cada carrusel con nombre guarda su propia configuración completa. Muestra uno con [cwc_carousel name=\"slug\"]; sin nombre se aplica la instancia reservada \"default\"."
+
+#: includes/class-admin.php:245
+msgid "Add new carousel"
+msgstr "Añadir nuevo carrusel"
+
+#: includes/class-admin.php:248
+msgid "No carousels registered yet."
+msgstr "Aún no hay carruseles registrados."
+
+#: includes/class-admin.php:253
+#: includes/class-admin.php:443
+msgid "Name"
+msgstr "Nombre"
+
+#: includes/class-admin.php:254
+msgid "Type"
+msgstr "Tipo"
+
+#: includes/class-admin.php:255
+msgid "Slides (desktop / tablet / mobile)"
+msgstr "Diapositivas (escritorio / tableta / móvil)"
+
+#: includes/class-admin.php:256
+#: includes/class-admin.php:494
+msgid "Controls"
+msgstr "Controles"
+
+#: includes/class-admin.php:257
+msgid "Max items"
+msgstr "Máx. elementos"
+
+#: includes/class-admin.php:258
+msgid "Actions"
+msgstr "Acciones"
+
+#: includes/class-admin.php:289
+msgid "Arrows"
+msgstr "Flechas"
+
+#: includes/class-admin.php:292
+msgid "Pagination"
+msgstr "Paginación"
+
+#: includes/class-admin.php:297
+#: includes/class-admin.php:454
+#: includes/class-admin.php:579
+msgid "Categories"
+msgstr "Categorías"
+
+#: includes/class-admin.php:297
+#: includes/class-admin.php:459
+#: includes/class-admin.php:578
+msgid "Products"
+msgstr "Productos"
+
+#: includes/class-admin.php:299
+msgid "None"
+msgstr "Ninguno"
+
+#: includes/class-admin.php:302
+msgid "Edit"
+msgstr "Editar"
+
+#: includes/class-admin.php:304
+msgid "(reserved — not deletable or renamable)"
+msgstr "(reservado: no se puede eliminar ni renombrar)"
+
+#: includes/class-admin.php:306
+#: includes/class-admin.php:557
+msgid "Delete"
+msgstr "Eliminar"
+
+#: includes/class-admin.php:340
+#: includes/class-admin.php:532
+msgid "The requested carousel was not found."
+msgstr "No se encontró el carrusel solicitado."
+
+#. translators: %s: instance slug.
+#: includes/class-admin.php:420
+#, php-format
+msgid "Edit carousel: %s"
+msgstr "Editar carrusel: %s"
+
+#: includes/class-admin.php:423
+msgid "New carousel"
+msgstr "Nuevo carrusel"
+
+#: includes/class-admin.php:429
+msgid "Back to carousels"
+msgstr "Volver a los carruseles"
+
+#: includes/class-admin.php:445
+msgid "Lowercase letters, numbers and hyphens. This is the value of the name=\"…\" attribute in [cwc_carousel]."
+msgstr "Letras minúsculas, números y guiones. Este es el valor del atributo name=\"…\" en [cwc_carousel]."
+
+#: includes/class-admin.php:450
+msgid "Carousel type"
+msgstr "Tipo de carrusel"
+
+#: includes/class-admin.php:465
 msgid "Cover mode"
 msgstr "Modo portada"
 
-#. Cover-mode checkbox label (AS-9).
-#: includes/class-admin.php
-msgid "Show cover cards"
-msgstr "Mostrar tarjetas de portada"
-
-#. Cover-mode checkbox description (AS-9).
-#: includes/class-admin.php
-msgid "Render portrait cards with a full-bleed image and a centered overlay title."
-msgstr "Muestra tarjetas verticales con imagen a sangre completa y un título centrado superpuesto."
-
-#. Subcategories editor row label (AS-9).
-#: includes/class-admin.php
+#: includes/class-admin.php:470
 msgid "Subcategories"
 msgstr "Subcategorías"
 
-#. Subcategories checkbox label (AS-9).
-#: includes/class-admin.php
-msgid "Show subcategories"
-msgstr "Mostrar subcategorías"
-
-#. Subcategories checkbox description (AS-9).
-#: includes/class-admin.php
-msgid "List direct child categories instead of the selected categories."
-msgstr "Lista las categorías hijas directas en lugar de las categorías seleccionadas."
-
-#. Title-alignment editor row label (AS-9).
-#: includes/class-admin.php
+#: includes/class-admin.php:474
 msgid "Title alignment"
 msgstr "Alineación del título"
 
-#. Title-alignment select options (AS-9).
-#: includes/class-admin.php
-msgid "Left"
-msgstr "Izquierda"
+#: includes/class-admin.php:478
+msgid "Slides"
+msgstr "Diapositivas"
 
-#: includes/class-admin.php
-msgid "Center"
-msgstr "Centro"
+#: includes/class-admin.php:482
+msgid "Gap (px)"
+msgstr "Espaciado (px)"
 
-#: includes/class-admin.php
-msgid "Right"
-msgstr "Derecha"
+#: includes/class-admin.php:486
+msgid "Maximum items"
+msgstr "Máximo de elementos"
 
-#. Per-category overlay title input label and chip placeholder (AS-3).
-#: includes/class-admin.php includes/class-assets.php
-msgid "Overlay title"
-msgstr "Título superpuesto"
+#: includes/class-admin.php:490
+msgid "Buy button"
+msgstr "Botón de compra"
 
-#. wp.media frame title for the inline per-chip uploader (AS-3).
-#: includes/class-assets.php
-msgid "Select an image for the category"
-msgstr "Selecciona una imagen para la categoría"
+#: includes/class-admin.php:541
+msgid "Delete carousel"
+msgstr "Eliminar carrusel"
 
-#. wp.media frame select button (AS-3).
-#: includes/class-assets.php
-msgid "Use this image"
-msgstr "Usar esta imagen"
+#. translators: %s: instance slug.
+#: includes/class-admin.php:546
+#, php-format
+msgid "You are about to delete the \"%s\" carousel."
+msgstr "Está a punto de eliminar el carrusel \"%s\"."
 
-#. Chip drag-handle tooltip (D1).
-#: includes/class-assets.php
-msgid "Drag to reorder"
-msgstr "Arrastrar para reordenar"
+#: includes/class-admin.php:551
+msgid "Pages and shortcodes that reference this name will fall back to the reserved \"default\" carousel — they keep rendering and never fail."
+msgstr "Las páginas y los shortcodes que hagan referencia a este nombre pasarán al carrusel reservado \"default\": seguirán mostrándose y nunca fallarán."
 
-#. Chip remove-button label (D3).
-#: includes/class-assets.php
-msgid "Remove"
-msgstr "Quitar"
+#: includes/class-admin.php:558
+msgid "Cancel"
+msgstr "Cancelar"
 
-#. Chip upload button label (AS-3).
-#: includes/class-assets.php
-msgid "Choose image"
-msgstr "Elegir imagen"
+#: includes/class-admin.php:581
+msgid "Whether the carousel shows products or category cards (product_cat terms)."
+msgstr "Indica si el carrusel muestra productos o tarjetas de categoría (términos de product_cat)."
 
-#. Category search picker placeholder (AS-11).
-#: includes/class-admin.php
+#: includes/class-admin.php:617
 msgid "Search categories…"
 msgstr "Buscar categorías…"
 
-#. Category picker empty-state CTA (AS-12).
-#: includes/class-admin.php
+#: includes/class-admin.php:662
 msgid "Add categories"
 msgstr "Añadir categorías"
 
-#. Category picker description (AS-11).
-#: includes/class-admin.php
+#: includes/class-admin.php:664
 msgid "Search and select categories; drag the chips to set the carousel order."
 msgstr "Busca y selecciona categorías; arrastra las etiquetas para fijar el orden del carrusel."
 
-#. Product search picker placeholder (AS-12).
-#: includes/class-admin.php
+#: includes/class-admin.php:700
 msgid "Search products…"
 msgstr "Buscar productos…"
 
-#. Products picker empty-state CTA (AS-12).
-#: includes/class-admin.php
+#: includes/class-admin.php:735
 msgid "Add products"
 msgstr "Añadir productos"
 
-#. Products picker description (AS-12).
-#: includes/class-admin.php
+#: includes/class-admin.php:737
 msgid "Search and select products; drag the chips to set the carousel order."
 msgstr "Busca y selecciona productos; arrastra las etiquetas para fijar el orden del carrusel."
+
+#: includes/class-admin.php:750
+msgid "Desktop"
+msgstr "Escritorio"
+
+#: includes/class-admin.php:752
+msgid "Tablet"
+msgstr "Tableta"
+
+#: includes/class-admin.php:754
+msgid "Mobile"
+msgstr "Móvil"
+
+#: includes/class-admin.php:785
+msgid "0 renders an empty carousel."
+msgstr "El valor 0 muestra un carrusel vacío."
+
+#: includes/class-admin.php:801
+msgid "Show the Buy button on product cards"
+msgstr "Mostrar el botón de compra en las tarjetas de producto"
+
+#: includes/class-admin.php:802
+msgid "Buy text"
+msgstr "Texto del botón de compra"
+
+#: includes/class-admin.php:828
+msgid "Show arrows"
+msgstr "Mostrar flechas"
+
+#: includes/class-admin.php:832
+msgid "Show pagination"
+msgstr "Mostrar paginación"
+
+#: includes/class-admin.php:859
+msgid "Show cover cards"
+msgstr "Mostrar tarjetas de portada"
+
+#: includes/class-admin.php:860
+msgid "Render portrait cards with a full-bleed image and a centered overlay title."
+msgstr "Muestra tarjetas verticales con imagen a sangre completa y un título centrado superpuesto."
+
+#: includes/class-admin.php:883
+msgid "Show subcategories"
+msgstr "Mostrar subcategorías"
+
+#: includes/class-admin.php:884
+msgid "List direct child categories instead of the selected categories."
+msgstr "Lista las categorías hijas directas en lugar de las categorías seleccionadas."
+
+#: includes/class-admin.php:909
+msgid "Left"
+msgstr "Izquierda"
+
+#: includes/class-admin.php:910
+msgid "Center"
+msgstr "Centro"
+
+#: includes/class-admin.php:911
+msgid "Right"
+msgstr "Derecha"
+
+#: includes/class-admin.php:1076
+msgid "The carousel name must contain at least one letter, number, or hyphen."
+msgstr "El nombre del carrusel debe contener al menos una letra, un número o un guion."
+
+#: includes/class-admin.php:1078
+msgid "\"default\" is a reserved name and cannot be used."
+msgstr "\"default\" es un nombre reservado y no se puede usar."
+
+#: includes/class-admin.php:1080
+msgid "A carousel with that name already exists."
+msgstr "Ya existe un carrusel con ese nombre."
+
+#. translators: %s: instance slug.
+#: includes/class-admin.php:1191
+#, php-format
+msgid "Cannot edit \"%s\": it does not exist in the registry."
+msgstr "No se puede editar \"%s\": no existe en el registro."
+
+#: includes/class-assets.php:231
+msgid "Select an image for the category"
+msgstr "Selecciona una imagen para la categoría"
+
+#: includes/class-assets.php:232
+msgid "Use this image"
+msgstr "Usar esta imagen"
+
+#: includes/class-assets.php:233
+msgid "Drag to reorder"
+msgstr "Arrastrar para reordenar"
+
+#: includes/class-assets.php:234
+msgid "Remove"
+msgstr "Quitar"
+
+#: includes/class-assets.php:235
+msgid "Choose image"
+msgstr "Elegir imagen"
+
+#: includes/class-assets.php:236
+msgid "Overlay title"
+msgstr "Título superpuesto"
+
+#: includes/class-plugin.php:95
+msgid "Custom Woo Pro Carousel requires WooCommerce to be installed and active."
+msgstr "Custom Woo Pro Carousel requiere que WooCommerce esté instalado y activo."
