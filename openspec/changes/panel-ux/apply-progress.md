@@ -222,3 +222,87 @@ Implementation matches design.md with two **verified-against-WC-11.0 adjustments
 ## Status
 
 3/3 Phase 3 tasks complete. Ready for review (PR #15, do not merge until reviewed).
+
+---
+
+# Apply Progress — Panel UX (Slice 4 / PR 4)
+
+## Slice 4: Phase 4 — Products Picker + Phase 5 Security Audit (PR 4) — COMPLETE
+
+- **Branch**: `feat/panel-ux-products` (base: tracker `feat/panel-ux` @ `0e48296`, the squashed PRs 1–3)
+- **PR**: #16 — https://github.com/sebaquevedo/carousel-plugin/pull/16
+- **Chain strategy**: feature-branch-chain — PR 4 targets the tracker branch (final slice; tracker aggregates to `main`).
+- **Date**: 2026-08-17
+
+## Tasks completed
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 4.1 | `class-admin.php`: `select.wc-product-search` (`woocommerce_json_search_products_and_variations`) gated to `type === 'product'`; `<option selected>` pre-render; `sanitize_instance` coerces `products`; create-mode re-render (AS-12, AS-5) | [x] |
+| 4.2 | `assets/js/admin.js`: chip list (thumbnail/name/remove), sortable → option order; "Add products" empty-state CTA (AS-12) | [x] |
+| 4.3 | `languages/*`: products-picker strings; final `tools/make-mo.php` recompile (AS-14) | [x] |
+| 5.1 | Security audit: nonce on every save, cap `manage_woocommerce`, `wp_unslash` + `sanitize_ids` on `[categories][]`/`[products][]`, escape output, term-meta permissions (AS-1/AS-5) | [x] |
+| 5.2 | `php -l` + phpcs + `node --check assets/js/admin.js`; wp-env smoke deferred to sdd-verify (create/edit/type-switch/drag/save; legacy BC) | [x] (smoke part deferred per design) |
+
+## Files changed
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `includes/class-admin.php` | Modified | `render_editor()` gains a Products row gated `'product' === $current['type']` (between Categories and the Cover-mode gate). New `render_products_field()`: `.cwc-picker` + `select.wc-product-search.enhanced` (data-action `woocommerce_json_search_products_and_variations`, minimum_input_length 1, return_id="id", placeholder "Search products…"), `<option selected>` pre-render in stored order via `wc_get_products( include=selected, limit=count, orderby=post__in, status=publish, type = product types + variation )` (D4 pattern from `class-query.php`, bf49167), per-option `data-thumb` from `get_image_id()` (variations inherit parent image), label `get_formatted_name()`; `.cwc-chip-list` + "Add products" CTA (`hidden` when stored selections exist) + description. No `data-edit` on this picker (products have no inline image/title controls — those are categories-only, AS-3). `sanitize_instance()` adds `'products' => sanitize_ids(...)` (AS-5); create-mode rejection re-render coerces `$current['products']` via `absint` exactly like categories. Docblocks updated (sanitize 18-key mention) (tasks 4.1, 5.1) |
+| `assets/js/admin.js` | Modified | `initEnhancedSelect()` generalized: branches on `wc-product-search` (action `woocommerce_json_search_products_and_variations`, nonce `search_products_nonce`, flat `{ id: formatted_name }` response mapped straight to id/text — WC_AJAX shape) vs `wc-category-search` (existing term-object mapping, `show_empty: 1` only for categories). Shared selectWoo flow, CTA `focusSearch()`, sortable chips, thumbnails. Docblock updated to "both pickers" (tasks 4.2, 5.1) |
+| `languages/cwc-carousel.pot` | Modified | +3 entries: "Search products…", "Add products", "Search and select products; drag the chips to set the carousel order." (AS-14) |
+| `languages/cwc-carousel-es_ES.po` | Modified | Same +3 translated (neutral Spanish): "Buscar productos…", "Añadir productos", "Busca y selecciona productos; arrastra las etiquetas para fijar el orden del carrusel." |
+| `languages/cwc-carousel-es_ES.mo` | Modified | Recompiled via `tools/make-mo.php` inside wp-env (POMO; magic `0x950412de`, 1892 → 2167 bytes) |
+| `openspec/changes/panel-ux/tasks.md` | Modified | Phase 4 tasks 4.1–4.3 and 5.1 marked `[x]` (5.2 smoke portion stays `[ ]` until verify) |
+| `openspec/changes/panel-ux/apply-progress.md` | Modified | This slice-4 section appended (continuity artifact) |
+
+## Commits (slice branch `feat/panel-ux-products`)
+
+| Hash | Message |
+|------|---------|
+| `798d848` | feat(admin): products Select2 picker gated to product type (PR 4/4) |
+| `f43b12a` | feat(admin): products search branch in picker JS (PR 4/4) |
+| `db628e1` | i18n(admin): extract products picker strings, recompile es_ES (PR 4/4) |
+| `<docs>` | docs(sdd): mark panel-ux Phase 4 tasks complete and record apply progress |
+
+## Security audit (task 5.1) — result: no gaps found
+
+Audited against AS-1/AS-5 across the whole admin surface (all four PRs):
+
+1. **Nonce on every save** — edit path uses the Settings API `settings_fields()` nonce; create/delete use `wp_nonce_field()` + `check_admin_referer()` on `cwc_registry_action`; category images use the dedicated `image_nonce` field with `check_admin_referer()` in `save_category_images()`. Products picker rides the same edit/create forms (no new save path).
+2. **Cap `manage_woocommerce`** — gates the settings page render, `save_category_images()`, `handle_registry_actions()` (create/delete), and `enqueue_admin_assets()`. Verified on the gated page only.
+3. **`wp_unslash` + `sanitize_ids` on `[categories][]`/`[products][]`** — `sanitize_instance()` coerces both via `CWC_Settings::sanitize_ids()` (absint, dedupe, drop 0); create-mode re-render `absint`-coerces both. Input arrives unslashed via `wp_unslash` in `options.php`/`handle_registry_actions()` upstream — no `$_POST` read in the sanitizer.
+4. **Escape output** — every render echoes through `esc_html()/esc_attr()/esc_url()` (verified in both picker fields, type field, media fields).
+5. **Term-meta permissions** — `cwc_cat_image`/`cwc_cat_title` written only by `save_category_images()` (nonce + cap + `wp_attachment_is_image()` for the image + `sanitize_text_field()` for the title, empty deletes). No `register_meta`/REST exposure — grep confirms no `show_in_rest`/`register_term_meta` on these keys. Products picker introduces no term-meta at all.
+
+**Conclusion**: the change adds sanitize/escape/nonce on every new field; no pre-existing gap was found. No fixes required beyond the products sanitize additions already in this slice.
+
+## Verification results
+
+- `php -l` on `class-admin.php`, `class-assets.php`, `class-settings.php`, `class-query.php`, `class-shortcode.php`, `tools/make-mo.php` → **no syntax errors**.
+- `composer phpcs` (full repo, WPCS) → **clean** (exit 0, no output).
+- `node --check assets/js/admin.js` → **JS syntax OK**.
+- `npx @wordpress/env run cli wp eval-file wp-content/plugins/carousel-plugin/tools/make-mo.php` → **"Success: Compiled ... cwc-carousel-es_ES.mo"**; file 2167 bytes, magic `0x950412de`.
+
+## Deviations from design
+
+None — implementation matches design.md (D1/D2/D4/D5). Details:
+
+- D4 pattern reused verbatim from `class-query.php` for pre-render (`type` = product types + `variation`, `orderby=post__in`, `limit=count`) so pre-rendered options and renderer queries agree; verified against the slice-1 query implementation.
+- AS-12 products picker intentionally has **no** `data-edit` attribute: inline image/title controls are a categories-only feature (AS-3); products chips show thumb/name/remove only, per spec.
+
+## Notes / observations for verify
+
+1. **Products endpoint shape**: `woocommerce_json_search_products_and_variations` returns a flat `{ id: formatted_name }` map (unlike the categories term-object map). `processResults` maps keys straight to id/text. Verify phase: confirm search-added variation chips label "Parent — Attribute: Value (SKU)".
+2. **Variation thumbnails**: `get_image_id()` on a variation falls back to the parent product's image (WC core behavior), so chips show the parent thumb when the variation has none.
+3. **CTA empty-state**: `hidden` attribute on the "Add products" button toggles with the chip list (shared machinery with categories); verify phase: confirm CTA shows until first selection and focusSearch opens the dropdown.
+4. **`.mo` recompile**: done via the wp-env CLI container (POMO classes require WP), same as slice 3 — this is the build step, not the smoke; the browser smoke (create/edit/type-switch/drag/save, legacy BC) is deferred to sdd-verify per the design.
+5. **PR 4 size**: ≈190 changed lines — small final slice; whole change ≈1,190 across the 4-PR chain.
+
+## Remaining slices
+
+- **sdd-verify**: full wp-env smoke (create/edit/type-switch/drag/save; variations render; legacy BC; es_ES no fallback) against the tracker branch, then sdd-archive.
+
+## Status
+
+7/7 Phase 4 + Phase 5 tasks complete (smoke verification portion of 5.2 deferred to sdd-verify). Ready for review (PR #16, do not merge until reviewed).
