@@ -29,10 +29,10 @@ Chain base: main or previous PR branch (orchestrator resolves `chain_strategy`).
 
 ## Phase 1: Backend Foundation (PR 1)
 
-- [ ] 1.1 `includes/class-settings.php`: `builtins()` + `'products' => []`; `normalize()` via `sanitize_ids()`; add to `$known`; 18-key docblock (CM-9)
-- [ ] 1.2 Seeds `productos`/`categorias` gain `products => []` (CM-10)
-- [ ] 1.3 `includes/class-query.php`: ids branch adds `type` incl. `variation` (D4)
-- [ ] 1.4 `includes/class-shortcode.php`: `shortcode_atts` + `'products' => ''`; non-empty → ordered `post__in`, `count` ignored; empty → latest-N BC (SC-11)
+- [x] 1.1 `includes/class-settings.php`: `builtins()` + `'products' => []`; `normalize()` via `sanitize_ids()`; add to `$known`; 18-key docblock (CM-9)
+- [x] 1.2 Seeds `productos`/`categorias` gain `products => []` (CM-10)
+- [x] 1.3 `includes/class-query.php`: ids branch adds `type` incl. `variation` (D4)
+- [x] 1.4 `includes/class-shortcode.php`: `shortcode_atts` + `'products' => ''`; non-empty → ordered `post__in`, `count` ignored; empty → latest-N BC (SC-11)
 
 **Acceptance**: `php -l` + phpcs; wp-env: legacy identical; `products="12,7,3"` renders in order.
 
