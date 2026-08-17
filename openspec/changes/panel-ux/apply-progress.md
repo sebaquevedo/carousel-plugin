@@ -306,3 +306,38 @@ None — implementation matches design.md (D1/D2/D4/D5). Details:
 ## Status
 
 7/7 Phase 4 + Phase 5 tasks complete (smoke verification portion of 5.2 deferred to sdd-verify). Ready for review (PR #16, do not merge until reviewed).
+
+---
+
+# Apply Progress — Panel UX (AS-14 Corrective Fix)
+
+## Corrective fix: complete es_ES catalog (AS-14 verify failure) — COMPLETE
+
+- **Branch**: `feat/panel-ux-i18n` (base: tracker `feat/panel-ux` @ `7c2d6da`)
+- **Date**: 2026-08-17
+- **Root cause**: the es_ES catalog was built minimal (commit `21dbf81`) and only extended with the panel-ux strings (PRs 3/4) — the ~50 pre-existing admin msgids had no `msgstr`, so the Spanish admin fell back to English (AS-14 runtime failure, 23/73 covered).
+
+## What was done
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `languages/cwc-carousel.pot` | Regenerated | `wp i18n make-pot` via wp-env CLI (`wp-content/plugins/carousel-plugin` → `languages/cwc-carousel.pot --domain=cwc-carousel`). Canonical WP-CLI output: 72 real msgids + header (73 `msgid` lines), including the 3 plugin-header strings and all `#, php-format` flags. |
+| `languages/cwc-carousel-es_ES.po` | Rewritten | Rebuilt from the regenerated .pot with all 72 msgids translated in neutral professional es_ES Spanish (non-rioplatense, consistent with the existing entries). Reused the 22 existing translations; added ~50 new ones (all list/editor labels, descriptions, create/delete/duplicate/unknown-slug errors, plugin header description + contributors, missing-WC notice). |
+| `languages/cwc-carousel-es_ES.mo` | Recompiled | Via `npx @wordpress/env run cli wp eval-file wp-content/plugins/carousel-plugin/tools/make-mo.php` (POMO): **"Success: Compiled ..."**; 2167 → 6090 bytes. |
+
+## Verification results
+
+- **Catalog completeness** (POMO cross-check, WP 7.0.4): POT msgids (excl. header) **72** → PO translated (non-empty, non-fuzzy) **72** → **Missing: 0, Fuzzy: 0 → PASS 72/72**.
+- **Runtime probes** (es_ES site, `__()`): all 26 previously-missing probe strings translate (`Name` → `Nombre`, `Carousels` → `Carruseles`, `Edit` → `Editar`, `Add products` → `Añadir productos`, the create/delete/duplicate errors, the list/editor labels, header strings, etc.) → **MISS COUNT: 0**.
+- **Runtime sweep** (all 72 .pot msgids): 71/72 resolve to translated strings; the sole non-resolving msgid is the plugin **name** `Custom Woo Pro Carousel`, whose msgstr is intentionally identical (proper noun / brand name — kept untranslated per i18n convention; it is NOT an untranslated entry).
+- `php -l` on `tools/make-mo.php` → no syntax errors (unchanged file); `composer phpcs` unaffected (languages/ only).
+
+## Notes for verify
+
+1. **`Custom Woo Pro Carousel` (plugin name) is intentionally kept as-is** — brand/proper noun, same convention WordPress.org uses; the msgstr is present and non-empty, so the catalog is complete. The header *description* and *contributors* ARE translated.
+2. **.pot is now canonical WP-CLI output** — the previous hand-authored `#.` comments (e.g. `(AS-9)`) are gone; the `#, php-format` flags and plugin-header comments are preserved. Regenerating with the same command is idempotent.
+3. **Temp verify scripts** (`tools/check-i18n.php`, `tools/probe-i18n.php`) were used for this fix and removed before commit — `tools/` ships only `make-mo.php` as before.
+
+## Status
+
+AS-14 corrected: es_ES catalog complete (72/72 real msgids translated, 0 missing, 0 fuzzy; runtime no-fallback proven on the es_ES site). Ready for re-verify.
