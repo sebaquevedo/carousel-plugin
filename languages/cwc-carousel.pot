@@ -1,122 +1,321 @@
 # Copyright (C) 2026 Custom Woo Pro Carousel contributors
-# This file is distributed under the same license as the Custom Woo Pro Carousel plugin.
+# This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
 "Project-Id-Version: Custom Woo Pro Carousel 0.1.0\n"
-"Report-Msgid-Bugs-To: https://github.com/sebaquevedo/carousel-plugin\n"
-"POT-Creation-Date: 2026-08-17 12:00+0000\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/carousel-plugin\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-08-17T16:16:43+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Language-Team: \n"
-"X-Generator: hand-authored (SDD CCC-6)\n"
+"X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: cwc-carousel\n"
 
-#. Cover-mode editor row label (AS-9).
-#: includes/class-admin.php
+#. Plugin Name of the plugin
+#: custom-woo-pro-carousel.php
+msgid "Custom Woo Pro Carousel"
+msgstr ""
+
+#. Description of the plugin
+#: custom-woo-pro-carousel.php
+msgid "A modular WooCommerce product carousel plugin powered by Swiper."
+msgstr ""
+
+#. Author of the plugin
+#: custom-woo-pro-carousel.php
+msgid "Custom Woo Pro Carousel contributors"
+msgstr ""
+
+#: includes/class-admin.php:148
+#: includes/class-admin.php:149
+msgid "Carousel"
+msgstr ""
+
+#: includes/class-admin.php:242
+msgid "Carousels"
+msgstr ""
+
+#: includes/class-admin.php:244
+msgid "Each named carousel holds its own full configuration. Render one with [cwc_carousel name=\"slug\"]; without a name the reserved \"default\" instance applies."
+msgstr ""
+
+#: includes/class-admin.php:245
+msgid "Add new carousel"
+msgstr ""
+
+#: includes/class-admin.php:248
+msgid "No carousels registered yet."
+msgstr ""
+
+#: includes/class-admin.php:253
+#: includes/class-admin.php:443
+msgid "Name"
+msgstr ""
+
+#: includes/class-admin.php:254
+msgid "Type"
+msgstr ""
+
+#: includes/class-admin.php:255
+msgid "Slides (desktop / tablet / mobile)"
+msgstr ""
+
+#: includes/class-admin.php:256
+#: includes/class-admin.php:494
+msgid "Controls"
+msgstr ""
+
+#: includes/class-admin.php:257
+msgid "Max items"
+msgstr ""
+
+#: includes/class-admin.php:258
+msgid "Actions"
+msgstr ""
+
+#: includes/class-admin.php:289
+msgid "Arrows"
+msgstr ""
+
+#: includes/class-admin.php:292
+msgid "Pagination"
+msgstr ""
+
+#: includes/class-admin.php:297
+#: includes/class-admin.php:454
+#: includes/class-admin.php:579
+msgid "Categories"
+msgstr ""
+
+#: includes/class-admin.php:297
+#: includes/class-admin.php:459
+#: includes/class-admin.php:578
+msgid "Products"
+msgstr ""
+
+#: includes/class-admin.php:299
+msgid "None"
+msgstr ""
+
+#: includes/class-admin.php:302
+msgid "Edit"
+msgstr ""
+
+#: includes/class-admin.php:304
+msgid "(reserved — not deletable or renamable)"
+msgstr ""
+
+#: includes/class-admin.php:306
+#: includes/class-admin.php:557
+msgid "Delete"
+msgstr ""
+
+#: includes/class-admin.php:340
+#: includes/class-admin.php:532
+msgid "The requested carousel was not found."
+msgstr ""
+
+#. translators: %s: instance slug.
+#: includes/class-admin.php:420
+#, php-format
+msgid "Edit carousel: %s"
+msgstr ""
+
+#: includes/class-admin.php:423
+msgid "New carousel"
+msgstr ""
+
+#: includes/class-admin.php:429
+msgid "Back to carousels"
+msgstr ""
+
+#: includes/class-admin.php:445
+msgid "Lowercase letters, numbers and hyphens. This is the value of the name=\"…\" attribute in [cwc_carousel]."
+msgstr ""
+
+#: includes/class-admin.php:450
+msgid "Carousel type"
+msgstr ""
+
+#: includes/class-admin.php:465
 msgid "Cover mode"
 msgstr ""
 
-#. Cover-mode checkbox label (AS-9).
-#: includes/class-admin.php
-msgid "Show cover cards"
-msgstr ""
-
-#. Cover-mode checkbox description (AS-9).
-#: includes/class-admin.php
-msgid "Render portrait cards with a full-bleed image and a centered overlay title."
-msgstr ""
-
-#. Subcategories editor row label (AS-9).
-#: includes/class-admin.php
+#: includes/class-admin.php:470
 msgid "Subcategories"
 msgstr ""
 
-#. Subcategories checkbox label (AS-9).
-#: includes/class-admin.php
-msgid "Show subcategories"
-msgstr ""
-
-#. Subcategories checkbox description (AS-9).
-#: includes/class-admin.php
-msgid "List direct child categories instead of the selected categories."
-msgstr ""
-
-#. Title-alignment editor row label (AS-9).
-#: includes/class-admin.php
+#: includes/class-admin.php:474
 msgid "Title alignment"
 msgstr ""
 
-#. Title-alignment select options (AS-9).
-#: includes/class-admin.php
-msgid "Left"
+#: includes/class-admin.php:478
+msgid "Slides"
 msgstr ""
 
-#: includes/class-admin.php
-msgid "Center"
+#: includes/class-admin.php:482
+msgid "Gap (px)"
 msgstr ""
 
-#: includes/class-admin.php
-msgid "Right"
+#: includes/class-admin.php:486
+msgid "Maximum items"
 msgstr ""
 
-#. Per-category overlay title input label and chip placeholder (AS-3).
-#: includes/class-admin.php includes/class-assets.php
-msgid "Overlay title"
+#: includes/class-admin.php:490
+msgid "Buy button"
 msgstr ""
 
-#. wp.media frame title for the inline per-chip uploader (AS-3).
-#: includes/class-assets.php
-msgid "Select an image for the category"
+#: includes/class-admin.php:541
+msgid "Delete carousel"
 msgstr ""
 
-#. wp.media frame select button (AS-3).
-#: includes/class-assets.php
-msgid "Use this image"
+#. translators: %s: instance slug.
+#: includes/class-admin.php:546
+#, php-format
+msgid "You are about to delete the \"%s\" carousel."
 msgstr ""
 
-#. Chip drag-handle tooltip (D1).
-#: includes/class-assets.php
-msgid "Drag to reorder"
+#: includes/class-admin.php:551
+msgid "Pages and shortcodes that reference this name will fall back to the reserved \"default\" carousel — they keep rendering and never fail."
 msgstr ""
 
-#. Chip remove-button label (D3).
-#: includes/class-assets.php
-msgid "Remove"
+#: includes/class-admin.php:558
+msgid "Cancel"
 msgstr ""
 
-#. Chip upload button label (AS-3).
-#: includes/class-assets.php
-msgid "Choose image"
+#: includes/class-admin.php:581
+msgid "Whether the carousel shows products or category cards (product_cat terms)."
 msgstr ""
 
-#. Category search picker placeholder (AS-11).
-#: includes/class-admin.php
+#: includes/class-admin.php:617
 msgid "Search categories…"
 msgstr ""
 
-#. Category picker empty-state CTA (AS-12).
-#: includes/class-admin.php
+#: includes/class-admin.php:662
 msgid "Add categories"
 msgstr ""
 
-#. Category picker description (AS-11).
-#: includes/class-admin.php
+#: includes/class-admin.php:664
 msgid "Search and select categories; drag the chips to set the carousel order."
 msgstr ""
 
-#. Product search picker placeholder (AS-12).
-#: includes/class-admin.php
+#: includes/class-admin.php:700
 msgid "Search products…"
 msgstr ""
 
-#. Products picker empty-state CTA (AS-12).
-#: includes/class-admin.php
+#: includes/class-admin.php:735
 msgid "Add products"
 msgstr ""
 
-#. Products picker description (AS-12).
-#: includes/class-admin.php
+#: includes/class-admin.php:737
 msgid "Search and select products; drag the chips to set the carousel order."
+msgstr ""
+
+#: includes/class-admin.php:750
+msgid "Desktop"
+msgstr ""
+
+#: includes/class-admin.php:752
+msgid "Tablet"
+msgstr ""
+
+#: includes/class-admin.php:754
+msgid "Mobile"
+msgstr ""
+
+#: includes/class-admin.php:785
+msgid "0 renders an empty carousel."
+msgstr ""
+
+#: includes/class-admin.php:801
+msgid "Show the Buy button on product cards"
+msgstr ""
+
+#: includes/class-admin.php:802
+msgid "Buy text"
+msgstr ""
+
+#: includes/class-admin.php:828
+msgid "Show arrows"
+msgstr ""
+
+#: includes/class-admin.php:832
+msgid "Show pagination"
+msgstr ""
+
+#: includes/class-admin.php:859
+msgid "Show cover cards"
+msgstr ""
+
+#: includes/class-admin.php:860
+msgid "Render portrait cards with a full-bleed image and a centered overlay title."
+msgstr ""
+
+#: includes/class-admin.php:883
+msgid "Show subcategories"
+msgstr ""
+
+#: includes/class-admin.php:884
+msgid "List direct child categories instead of the selected categories."
+msgstr ""
+
+#: includes/class-admin.php:909
+msgid "Left"
+msgstr ""
+
+#: includes/class-admin.php:910
+msgid "Center"
+msgstr ""
+
+#: includes/class-admin.php:911
+msgid "Right"
+msgstr ""
+
+#: includes/class-admin.php:1076
+msgid "The carousel name must contain at least one letter, number, or hyphen."
+msgstr ""
+
+#: includes/class-admin.php:1078
+msgid "\"default\" is a reserved name and cannot be used."
+msgstr ""
+
+#: includes/class-admin.php:1080
+msgid "A carousel with that name already exists."
+msgstr ""
+
+#. translators: %s: instance slug.
+#: includes/class-admin.php:1191
+#, php-format
+msgid "Cannot edit \"%s\": it does not exist in the registry."
+msgstr ""
+
+#: includes/class-assets.php:231
+msgid "Select an image for the category"
+msgstr ""
+
+#: includes/class-assets.php:232
+msgid "Use this image"
+msgstr ""
+
+#: includes/class-assets.php:233
+msgid "Drag to reorder"
+msgstr ""
+
+#: includes/class-assets.php:234
+msgid "Remove"
+msgstr ""
+
+#: includes/class-assets.php:235
+msgid "Choose image"
+msgstr ""
+
+#: includes/class-assets.php:236
+msgid "Overlay title"
+msgstr ""
+
+#: includes/class-plugin.php:95
+msgid "Custom Woo Pro Carousel requires WooCommerce to be installed and active."
 msgstr ""
