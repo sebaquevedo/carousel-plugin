@@ -3,7 +3,7 @@
 ## Slice 1: Phase 1 — Backend Foundation (PR 1) — COMPLETE
 
 - **Branch**: `feat/panel-ux-config` (base: tracker `feat/panel-ux`)
-- **PR**: #1 — https://github.com/sebaquevedo/carousel-plugin/pull/1
+- **PR**: #13 — https://github.com/sebaquevedo/carousel-plugin/pull/13
 - **Chain strategy**: feature-branch-chain (tracker `feat/panel-ux` aggregates to `main`; PR 1 targets the tracker; PRs 2–4 target the previous PR branch).
 - **Date**: 2026-08-17
 
