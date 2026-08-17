@@ -96,6 +96,26 @@
 	color: #8a2424;
 }
 
+/* Chips in edit mode carry inline upload/title controls (AS-3, D5); allow
+   wrapping so narrow columns stay usable. */
+.cwc-chip {
+	flex-wrap: wrap;
+}
+
+/* "Choose image" sits inline after the name; the remove button stays on
+   the top row. The hidden attachment-id input renders no box. */
+.cwc-chip .cwc-cat-image-upload {
+	flex: 0 0 auto;
+}
+
+/* Overlay title input: a full-width second row inside the chip, pushed
+   after the top-row controls with `order` (DOM order keeps remove last). */
+.cwc-chip .cwc-cat-title-input {
+	flex: 1 1 100%;
+	order: 10;
+	margin: 0;
+}
+
 /* Empty-state call to action: "Add products" until the first selection
    (AS-12). admin.js toggles the hidden attribute; the .button styling comes
    from WP core. */
