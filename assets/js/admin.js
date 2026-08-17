@@ -95,6 +95,18 @@
 				}
 			);
 
+			// selectWoo's native `change` does not always fire synchronously
+			// for AJAX multiple selects, so also listen to the canonical
+			// `select2:select` / `select2:unselect` events and rebuild from
+			// there (D3). Both paths converge on rebuildChipList, which reads
+			// the select's `option:checked` as the single source of truth.
+			window.jQuery( select ).on(
+				'select2:select select2:unselect',
+				function () {
+					rebuildChipList( list, select, cta );
+				}
+			);
+
 			if ( cta ) {
 				cta.addEventListener(
 					'click',
@@ -161,6 +173,7 @@
 
 		window.jQuery( select )
 			.selectWoo( {
+				width: '100%',
 				allowClear: false,
 				placeholder: select.getAttribute( 'data-placeholder' ),
 				minimumInputLength: minLength,
@@ -207,7 +220,7 @@
 									} );
 								} else {
 									results.push( {
-										id: returnId ? item.term_id : item.slug,
+										id: returnId ? String( item.term_id ) : item.slug,
 										text: item.formatted_name || item.name
 									} );
 								}

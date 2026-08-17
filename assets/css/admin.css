@@ -25,6 +25,28 @@
 	padding: 4px 5px;
 }
 
+/* Full-width enhanced selects: the search/selection box spans the entire
+   content column. `!important` overrides selectWoo's inline container width
+   (the JS `width: '100%'` alone can be overridden by WC's own CSS). */
+.cwc-picker .select2-container,
+.cwc-picker .select2-selection {
+	width: 100% !important;
+}
+
+/* The inline search field is the dominant visible element (the native chips
+   are hidden), so force it to fill the selection box instead of selectWoo's
+   narrow default (width: 0.75em that only grows while typing). */
+.cwc-picker .select2-search--inline {
+	float: none;
+	display: block;
+	width: 100%;
+}
+
+.cwc-picker .select2-search__field {
+	width: 100% !important;
+	min-width: 100%;
+}
+
 /* Sortable chip list — the visible, draggable projection of the select. */
 .cwc-chip-list {
 	display: flex;
