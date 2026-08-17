@@ -7,13 +7,14 @@
  * 1. Picker — each `.cwc-picker` wrapper (CWC_Admin) holds a multiple
  *    enhanced <select> (selectWoo AJAX search), the visible sortable
  *    `.cwc-chip-list`, and the empty-state CTA. This script takes over the
- *    selectWoo init from WooCommerce for the category search: the select
- *    renders with the `enhanced` marker so wc-enhanced-select.js skips it
- *    (WC 11.0's stock init neither forwards `show_empty` to the endpoint nor
- *    a stable value type without `data-return_id="id"`). The native option
- *    order is kept in sync with the chip order so the form POST serializes
- *    the visible order (D1, D3); the list rebuilds from `option:checked` on
- *    change (AS-11).
+ *    selectWoo init from WooCommerce for both pickers: the category search
+ *    (`.wc-category-search`, AS-11) and the product/variation search
+ *    (`.wc-product-search`, AS-12). The selects render with the `enhanced`
+ *    marker so wc-enhanced-select.js skips them (WC 11.0's stock init neither
+ *    forwards `show_empty` to the categories endpoint nor a stable value type
+ *    without `data-return_id="id"`). The native option order is kept in sync
+ *    with the chip order so the form POST serializes the visible order (D1,
+ *    D3); the list rebuilds from `option:checked` on change (AS-11, AS-12).
  *
  * 2. Inline media uploader — in edit mode each chip carries a "Choose
  *    image" button driving a wp.media frame (AS-3); on selection the hidden
@@ -108,14 +109,16 @@
 	/**
 	 * Initializes a picker's select with selectWoo AJAX search.
 	 *
-	 * Mirrors WooCommerce's own `wc-category-search` init (WC 11.0): same
-	 * endpoint, same `search_categories_nonce`, same `formatted_name`
-	 * labels, same localized dropdown strings. Two deliberate additions —
-	 * `show_empty: 1` keeps empty categories selectable (the previous native
-	 * field listed them, hide_empty=false, AS-11) and `data-return_id="id"`
-	 * keeps term ids as option values (sanitize_ids). The `enhanced` marker
-	 * in the PHP markup blocks wc-enhanced-select.js from initializing this
-	 * select itself.
+	 * Mirrors WooCommerce's own `wc-category-search` / `wc-product-search`
+	 * init (WC 11.0): same endpoints, same nonces, same localized dropdown
+	 * strings. Two deliberate additions — `show_empty: 1` keeps empty
+	 * categories selectable (the previous native field listed them,
+	 * hide_empty=false, AS-11) and `data-return_id="id"` keeps term ids as
+	 * option values (sanitize_ids). The products branch (`.wc-product-search`,
+	 * AS-12) uses the `_and_variations` endpoint so variations are selectable
+	 * and maps its flat `{ id: formatted_name }` response. The `enhanced`
+	 * marker in the PHP markup blocks wc-enhanced-select.js from
+	 * initializing these selects itself.
 	 *
 	 * @param {HTMLElement} picker Picker wrapper element.
 	 * @param {HTMLElement} select Enhanced select element.
@@ -134,13 +137,22 @@
 		// present on this screen; bail defensively otherwise.
 		var params = window.wc_enhanced_select_params || {};
 
-		if ( ! params.ajax_url || ! params.search_categories_nonce ) {
+		// Branch on the search type: `.wc-product-search` (products +
+		// variations, AS-12) or `.wc-category-search` (terms, AS-11). Each
+		// has its own endpoint and nonce key.
+		var isProductSearch = select.classList.contains( 'wc-product-search' );
+
+		if ( ! isProductSearch && ! select.classList.contains( 'wc-category-search' ) ) {
 			return;
 		}
 
-		// PR 4 adds the products picker branch here; only the category
-		// search exists today (AS-11).
-		if ( ! select.classList.contains( 'wc-category-search' ) ) {
+		var action = isProductSearch
+			? 'woocommerce_json_search_products_and_variations'
+			: 'woocommerce_json_search_categories';
+
+		var nonce = isProductSearch ? params.search_products_nonce : params.search_categories_nonce;
+
+		if ( ! params.ajax_url || ! nonce ) {
 			return;
 		}
 
@@ -160,28 +172,45 @@
 					dataType: 'json',
 					delay: 250,
 					data: function ( request ) {
-						return {
+						var data = {
 							term: request.term,
-							action: 'woocommerce_json_search_categories',
-							security: params.search_categories_nonce,
-							show_empty: 1
+							action: action,
+							security: nonce
 						};
+
+						// Categories: keep empty terms selectable (AS-11).
+						// The products endpoint has no such flag.
+						if ( ! isProductSearch ) {
+							data.show_empty = 1;
+						}
+
+						return data;
 					},
 					processResults: function ( data ) {
 						var results = [];
 
 						if ( data ) {
 							Object.keys( data ).forEach( function ( key ) {
-								var term = data[ key ];
+								var item = data[ key ];
 
-								if ( ! term ) {
+								if ( ! item ) {
 									return;
 								}
 
-								results.push( {
-									id: returnId ? term.term_id : term.slug,
-									text: term.formatted_name || term.name
-								} );
+								if ( isProductSearch ) {
+									// The products endpoint returns a flat
+									// { id: formatted_name } map — id/text
+									// straight through (WC_AJAX).
+									results.push( {
+										id: key,
+										text: item
+									} );
+								} else {
+									results.push( {
+										id: returnId ? item.term_id : item.slug,
+										text: item.formatted_name || item.name
+									} );
+								}
 							} );
 						}
 
@@ -251,9 +280,9 @@
 	/**
 	 * Opens the picker's Select2 dropdown and focuses its search input.
 	 *
-	 * The empty-state CTA ("Add categories") leads here: clicking it is the
-	 * equivalent of focusing the select, which is otherwise invisible while
-	 * the enhanced select is hidden.
+	 * The empty-state CTA ("Add categories" / "Add products") leads here:
+	 * clicking it is the equivalent of focusing the select, which is
+	 * otherwise invisible while the enhanced select is hidden (AS-12).
 	 *
 	 * @param {HTMLElement} picker Picker wrapper element.
 	 * @return {void}

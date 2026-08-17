@@ -54,13 +54,13 @@ Chain base: main or previous PR branch (orchestrator resolves `chain_strategy`).
 
 ## Phase 4: Products Picker (PR 4)
 
-- [ ] 4.1 `includes/class-admin.php`: `select.wc-product-search` (`woocommerce_json_search_products_and_variations`) gated to `type === 'product'`; `<option selected>` pre-render; `sanitize_instance` coerces `products`; create-mode re-render (AS-12, AS-5)
-- [ ] 4.2 + `assets/js/admin.js`: chip list (thumbnail/name/remove), sortable → option order; "Add products" empty-state CTA (AS-12)
-- [ ] 4.3 `languages/*`: products-picker strings; final `tools/make-mo.php` recompile (AS-14)
+- [x] 4.1 `includes/class-admin.php`: `select.wc-product-search` (`woocommerce_json_search_products_and_variations`) gated to `type === 'product'`; `<option selected>` pre-render; `sanitize_instance` coerces `products`; create-mode re-render (AS-12, AS-5)
+- [x] 4.2 + `assets/js/admin.js`: chip list (thumbnail/name/remove), sortable → option order; "Add products" empty-state CTA (AS-12)
+- [x] 4.3 `languages/*`: products-picker strings; final `tools/make-mo.php` recompile (AS-14)
 
 **Acceptance**: variations selectable/render (needs PR 1); hidden for `type=category`; CTA until first selection; order persists.
 
 ## Phase 5: Security & Verification
 
-- [ ] 5.1 Audit: nonce on every save, cap `manage_woocommerce`, `wp_unslash` + `sanitize_ids` on `[categories][]`/`[products][]`, escape output, term-meta permissions (AS-1/AS-5)
+- [x] 5.1 Audit: nonce on every save, cap `manage_woocommerce`, `wp_unslash` + `sanitize_ids` on `[categories][]`/`[products][]`, escape output, term-meta permissions (AS-1/AS-5)
 - [ ] 5.2 `php -l` + phpcs + `node --check assets/js/admin.js` per PR; wp-env smoke (create/edit/type-switch/drag/save; legacy BC)
