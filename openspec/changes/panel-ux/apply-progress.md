@@ -115,6 +115,7 @@ None — implementation matches design.md. Details:
 | `59274d5` | feat(admin): add admin stylesheet for picker chips and empty-state CTA (D3) |
 | `c9484e6` | feat(admin): localize admin JS strings and add inert sortable chip scaffolding (FA-5) |
 | `cd71784` | docs(sdd): mark panel-ux Phase 2 tasks complete and record apply progress |
+| `425d198` | docs(sdd): fix apply-progress commit hash for slice 2 |
 
 ## Verification results
 
