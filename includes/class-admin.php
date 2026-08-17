@@ -447,6 +447,10 @@ class CWC_Admin {
 				?>
 				<table class="form-table" role="presentation">
 					<tr>
+						<th scope="row"><?php esc_html_e( 'Title', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_title_field( $prefix, $current ); ?></td>
+					</tr>
+					<tr>
 						<th scope="row"><?php esc_html_e( 'Carousel type', 'cwc-carousel' ); ?></th>
 						<td><?php $this->render_type_field( $prefix, $current ); ?></td>
 					</tr>
@@ -579,6 +583,24 @@ class CWC_Admin {
 		echo '<option value="category"' . selected( $selected, 'category', false ) . '>' . esc_html__( 'Categories', 'cwc-carousel' ) . '</option>';
 		echo '</select>';
 		echo '<p class="description">' . esc_html__( 'Whether the carousel shows products or category cards (product_cat terms).', 'cwc-carousel' ) . '</p>';
+	}
+
+	/**
+	 * Renders the display title text field.
+	 *
+	 * The title is the heading shown above the carousel on the front end; it
+	 * is independent of the instance slug (the shortcode `name`). An empty
+	 * title makes the renderer omit the heading entirely (CR-1).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
+	 * @return void
+	 */
+	public function render_title_field( string $prefix, array $current ) {
+		echo '<input type="text" class="regular-text" name="' . esc_attr( $prefix ) . '[title]" value="' . esc_attr( $current['title'] ) . '" maxlength="100" />';
+		echo '<p class="description">' . esc_html__( 'Display title shown above the carousel. Leave empty to hide it.', 'cwc-carousel' ) . '</p>';
 	}
 
 	/**
@@ -734,7 +756,7 @@ class CWC_Admin {
 		echo '<ul class="cwc-chip-list"></ul>';
 		echo '<button type="button" class="button cwc-empty-cta"' . ( empty( $selected ) ? '' : ' hidden' ) . '>' . esc_html__( 'Add products', 'cwc-carousel' ) . '</button>';
 		echo '</div>';
-		echo '<p class="description">' . esc_html__( 'Search and select products; drag the chips to set the carousel order.', 'cwc-carousel' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Add products to show exactly these items in this order — the category filter above is ignored. Leave it empty to automatically show the latest products from the selected categories.', 'cwc-carousel' ) . '</p>';
 	}
 
 	/**
@@ -1238,6 +1260,7 @@ class CWC_Admin {
 		$text       = isset( $input['buy_text'] ) ? $input['buy_text'] : $built['buy_text'];
 
 		return array(
+			'title'         => $this->clean_text( isset( $input['title'] ) ? $input['title'] : '', $built['title'] ),
 			'type'          => ( 'category' === $type ) ? 'category' : 'product',
 			'categories'    => $this->settings->sanitize_ids( isset( $input['categories'] ) ? $input['categories'] : array() ),
 			'products'      => $this->settings->sanitize_ids( isset( $input['products'] ) ? $input['products'] : array() ),

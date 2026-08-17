@@ -139,6 +139,10 @@ msgid "Lowercase letters, numbers and hyphens. This is the value of the name=\"�
 msgstr "Letras minúsculas, números y guiones. Este es el valor del atributo name=\"…\" en [cwc_carousel]."
 
 #: includes/class-admin.php:450
+msgid "Title"
+msgstr "Título"
+
+#: includes/class-admin.php:450
 msgid "Carousel type"
 msgstr "Tipo de carrusel"
 
@@ -192,6 +196,10 @@ msgstr "Cancelar"
 msgid "Whether the carousel shows products or category cards (product_cat terms)."
 msgstr "Indica si el carrusel muestra productos o tarjetas de categoría (términos de product_cat)."
 
+#: includes/class-admin.php:603
+msgid "Display title shown above the carousel. Leave empty to hide it."
+msgstr "Título que se muestra encima del carrusel. Déjalo vacío para ocultarlo."
+
 #: includes/class-admin.php:617
 msgid "Search categories…"
 msgstr "Buscar categorías…"
@@ -213,8 +221,8 @@ msgid "Add products"
 msgstr "Añadir productos"
 
 #: includes/class-admin.php:737
-msgid "Search and select products; drag the chips to set the carousel order."
-msgstr "Busca y selecciona productos; arrastra las etiquetas para fijar el orden del carrusel."
+msgid "Add products to show exactly these items in this order — the category filter above is ignored. Leave it empty to automatically show the latest products from the selected categories."
+msgstr "Añadir productos muestra exactamente estos artículos en este orden e ignora el filtro de categorías de arriba. Si se deja vacío, se muestran automáticamente los productos más recientes de las categorías seleccionadas."
 
 #: includes/class-admin.php:750
 msgid "Desktop"

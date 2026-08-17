@@ -137,6 +137,10 @@ msgid "Lowercase letters, numbers and hyphens. This is the value of the name=\"�
 msgstr ""
 
 #: includes/class-admin.php:450
+msgid "Title"
+msgstr ""
+
+#: includes/class-admin.php:450
 msgid "Carousel type"
 msgstr ""
 
@@ -190,6 +194,10 @@ msgstr ""
 msgid "Whether the carousel shows products or category cards (product_cat terms)."
 msgstr ""
 
+#: includes/class-admin.php:603
+msgid "Display title shown above the carousel. Leave empty to hide it."
+msgstr ""
+
 #: includes/class-admin.php:617
 msgid "Search categories…"
 msgstr ""
@@ -211,7 +219,7 @@ msgid "Add products"
 msgstr ""
 
 #: includes/class-admin.php:737
-msgid "Search and select products; drag the chips to set the carousel order."
+msgid "Add products to show exactly these items in this order — the category filter above is ignored. Leave it empty to automatically show the latest products from the selected categories."
 msgstr ""
 
 #: includes/class-admin.php:750
