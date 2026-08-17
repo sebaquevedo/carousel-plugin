@@ -1,28 +1,33 @@
 /**
- * Admin scripts: per-category media uploader and picker chip scaffolding.
+ * Admin scripts: enhanced-search picker chips and inline per-chip uploader.
  *
- * Two independent concerns, both scoped to the Carousel settings screen by
- * CWC_Assets (FA-5):
+ * Two concerns, both scoped to the Carousel settings screen by CWC_Assets
+ * (FA-5):
  *
- * 1. Media uploader — wires a wp.media frame onto each "Choose image" button
- *    the CWC_Admin page renders for a selected product_cat term. Opening the
- *    frame selects an image from the library; on selection the hidden
- *    `cwc_cat_images[<term_id>]` attachment-id input is updated and the row
- *    preview refreshes. Saving happens through the settings form (the
- *    admin_init handler) as usual, so this script only mutates the DOM — it
- *    performs no AJAX (AS-3). Each row is matched by `.cwc-category-image-row`
- *    and identified by its `data-term-id` attribute.
+ * 1. Picker — each `.cwc-picker` wrapper (CWC_Admin) holds a multiple
+ *    enhanced <select> (selectWoo AJAX search), the visible sortable
+ *    `.cwc-chip-list`, and the empty-state CTA. This script takes over the
+ *    selectWoo init from WooCommerce for the category search: the select
+ *    renders with the `enhanced` marker so wc-enhanced-select.js skips it
+ *    (WC 11.0's stock init neither forwards `show_empty` to the endpoint nor
+ *    a stable value type without `data-return_id="id"`). The native option
+ *    order is kept in sync with the chip order so the form POST serializes
+ *    the visible order (D1, D3); the list rebuilds from `option:checked` on
+ *    change (AS-11).
  *
- * 2. Picker scaffolding — keeps the visible `.cwc-chip-list` in sync with the
- *    enhanced <select> options and the native form POST (D1, D3): the list is
- *    rebuilt from `option:checked` on change, and drag-sorted chips reorder
- *    the select's options so the submitted order is the visible order. Inert
- *    until PRs 3-4 render the `.cwc-picker` markup: with no picker on screen
- *    the init matches nothing and changes nothing.
+ * 2. Inline media uploader — in edit mode each chip carries a "Choose
+ *    image" button driving a wp.media frame (AS-3); on selection the hidden
+ *    `cwc_cat_images[<term_id>]` attachment-id input updates and the chip
+ *    thumbnail preview refreshes. An overlay-title text input posts
+ *    `cwc_cat_titles[<term_id>]` (D5). Saving happens through the settings
+ *    form's admin_init handler as usual — this script only mutates the DOM,
+ *    it performs no AJAX (AS-3).
  *
  * All user-facing strings come from the `cwcCarouselAdmin` object that
  * wp_localize_script registers with this script — no hardcoded literals
- * (FA-5).
+ * (FA-5). The picker dropdown messages mirror WC 11.0's
+ * getEnhancedSelectFormatString() from WooCommerce's localized
+ * `wc_enhanced_select_params`, so they stay translated (es_ES included).
  *
  * @package CWC_Carousel
  * @since   0.1.0
@@ -47,31 +52,19 @@
 	document.addEventListener(
 		'DOMContentLoaded',
 		function () {
-			initUploaders();
 			initPickers();
 		}
 	);
 
 	/**
-	 * Wires the upload button inside every category row.
-	 *
-	 * @return {void}
-	 */
-	function initUploaders() {
-		var rows = document.querySelectorAll( '.cwc-category-image-row' );
-
-		rows.forEach( function ( row ) {
-			attachUploader( row );
-		} );
-	}
-
-	/**
 	 * Wires picker behavior for every enhanced select on the screen.
 	 *
-	 * PRs 3-4 render each picker as a `.cwc-picker` wrapper holding an
-	 * enhanced <select> (selectWoo AJAX search), an empty `.cwc-chip-list`
-	 * and the empty-state CTA. Until that markup exists this loop matches
-	 * nothing, so the current screen keeps its pre-picker behavior (FA-5).
+	 * Each picker renders as a `.cwc-picker` wrapper holding an enhanced
+	 * <select> (selectWoo AJAX search), an empty `.cwc-chip-list` and the
+	 * empty-state CTA. The selectWoo init runs here — not through
+	 * wc-enhanced-select.js — so the picker can pass `show_empty` and a
+	 * stable value type (AS-11; the `enhanced` class in the PHP markup
+	 * blocks WooCommerce's own init, WC 11.0).
 	 *
 	 * @return {void}
 	 */
@@ -87,6 +80,7 @@
 				return;
 			}
 
+			initEnhancedSelect( picker, select );
 			makeSortable( list, select );
 			rebuildChipList( list, select, cta );
 
@@ -99,7 +93,192 @@
 					rebuildChipList( list, select, cta );
 				}
 			);
+
+			if ( cta ) {
+				cta.addEventListener(
+					'click',
+					function () {
+						focusSearch( picker );
+					}
+				);
+			}
 		} );
+	}
+
+	/**
+	 * Initializes a picker's select with selectWoo AJAX search.
+	 *
+	 * Mirrors WooCommerce's own `wc-category-search` init (WC 11.0): same
+	 * endpoint, same `search_categories_nonce`, same `formatted_name`
+	 * labels, same localized dropdown strings. Two deliberate additions —
+	 * `show_empty: 1` keeps empty categories selectable (the previous native
+	 * field listed them, hide_empty=false, AS-11) and `data-return_id="id"`
+	 * keeps term ids as option values (sanitize_ids). The `enhanced` marker
+	 * in the PHP markup blocks wc-enhanced-select.js from initializing this
+	 * select itself.
+	 *
+	 * @param {HTMLElement} picker Picker wrapper element.
+	 * @param {HTMLElement} select Enhanced select element.
+	 * @return {void}
+	 */
+	function initEnhancedSelect( picker, select ) {
+		if (
+			typeof window.jQuery === 'undefined' ||
+			typeof window.jQuery.fn.selectWoo === 'undefined'
+		) {
+			return;
+		}
+
+		// WC localizes its enhanced-select params (ajax_url, nonces, i18n
+		// strings) onto the handle CWC_Assets enqueues, so the object is
+		// present on this screen; bail defensively otherwise.
+		var params = window.wc_enhanced_select_params || {};
+
+		if ( ! params.ajax_url || ! params.search_categories_nonce ) {
+			return;
+		}
+
+		// PR 4 adds the products picker branch here; only the category
+		// search exists today (AS-11).
+		if ( ! select.classList.contains( 'wc-category-search' ) ) {
+			return;
+		}
+
+		var minLength = parseInt( select.getAttribute( 'data-minimum_input_length' ) || '1', 10 ) || 1;
+		var returnId  = 'id' === select.getAttribute( 'data-return_id' );
+
+		window.jQuery( select )
+			.selectWoo( {
+				allowClear: false,
+				placeholder: select.getAttribute( 'data-placeholder' ),
+				minimumInputLength: minLength,
+				escapeMarkup: function ( m ) {
+					return m;
+				},
+				ajax: {
+					url: params.ajax_url,
+					dataType: 'json',
+					delay: 250,
+					data: function ( request ) {
+						return {
+							term: request.term,
+							action: 'woocommerce_json_search_categories',
+							security: params.search_categories_nonce,
+							show_empty: 1
+						};
+					},
+					processResults: function ( data ) {
+						var results = [];
+
+						if ( data ) {
+							Object.keys( data ).forEach( function ( key ) {
+								var term = data[ key ];
+
+								if ( ! term ) {
+									return;
+								}
+
+								results.push( {
+									id: returnId ? term.term_id : term.slug,
+									text: term.formatted_name || term.name
+								} );
+							} );
+						}
+
+						return { results: results };
+					},
+					cache: true
+				},
+				language: enhancedSelectLanguage( params )
+			} )
+			.addClass( 'enhanced' );
+	}
+
+	/**
+	 * Builds selectWoo's language strings from WC's localized params.
+	 *
+	 * Faithful mirror of WC 11.0's getEnhancedSelectFormatString() so the
+	 * dropdown messages match what the stock enhanced selects show (the
+	 * `i18n_*` keys of `wc_enhanced_select_params`, es_ES included). The
+	 * empty fallback keeps the code safe if any key is missing.
+	 *
+	 * @param {Object} params Localized wc_enhanced_select_params object.
+	 * @return {Object} selectWoo `language` option.
+	 */
+	function enhancedSelectLanguage( params ) {
+		return {
+			errorLoading: function () {
+				// Workaround for select2#4355, same as WC 11.0.
+				return params.i18n_searching || '';
+			},
+			inputTooLong: function ( args ) {
+				var overChars = args.input.length - args.maximum;
+
+				if ( 1 === overChars ) {
+					return params.i18n_input_too_long_1 || '';
+				}
+
+				return ( params.i18n_input_too_long_n || '' ).replace( '%qty%', overChars );
+			},
+			inputTooShort: function ( args ) {
+				var remainingChars = args.minimum - args.input.length;
+
+				if ( 1 === remainingChars ) {
+					return params.i18n_input_too_short_1 || '';
+				}
+
+				return ( params.i18n_input_too_short_n || '' ).replace( '%qty%', remainingChars );
+			},
+			loadingMore: function () {
+				return params.i18n_load_more || '';
+			},
+			maximumSelected: function ( args ) {
+				if ( args.maximum === 1 ) {
+					return params.i18n_selection_too_long_1 || '';
+				}
+
+				return ( params.i18n_selection_too_long_n || '' ).replace( '%qty%', args.maximum );
+			},
+			noResults: function () {
+				return params.i18n_no_matches || '';
+			},
+			searching: function () {
+				return params.i18n_searching || '';
+			}
+		};
+	}
+
+	/**
+	 * Opens the picker's Select2 dropdown and focuses its search input.
+	 *
+	 * The empty-state CTA ("Add categories") leads here: clicking it is the
+	 * equivalent of focusing the select, which is otherwise invisible while
+	 * the enhanced select is hidden.
+	 *
+	 * @param {HTMLElement} picker Picker wrapper element.
+	 * @return {void}
+	 */
+	function focusSearch( picker ) {
+		if (
+			typeof window.jQuery === 'undefined' ||
+			typeof window.jQuery.fn.selectWoo === 'undefined'
+		) {
+			return;
+		}
+
+		var select = picker.querySelector( 'select[multiple]' );
+
+		if ( ! select ) {
+			return;
+		}
+
+		window.jQuery( select ).selectWoo( 'open' );
+
+		var field = picker.querySelector( '.select2-search__field' );
+
+		if ( field ) {
+			field.focus();
+		}
 	}
 
 	/**
@@ -185,11 +364,12 @@
 	 * Builds one chip element from a selected option.
 	 *
 	 * The chip mirrors the option: the value in `data-id`, the label as the
-	 * chip name, and an optional `data-thumb` url for the thumbnail (PRs 3-4
-	 * populate it from the term/product data the PHP pre-render already
-	 * holds). The remove button deselects the option and fires a bubbling
-	 * `change`, which rebuilds the list; PRs 3-4 can swap this for selectWoo's
-	 * own change trigger once the enhanced select owns the visible state.
+	 * chip name, and an optional `data-thumb` url for the thumbnail (the PHP
+	 * pre-render populates it from the term's stored image meta, AS-3). In
+	 * edit mode (picker carries `data-edit`) the inline upload/title
+	 * controls render too (D5). The remove button deselects the option and
+	 * fires a bubbling `change`; the native option state drives both the
+	 * visible list and the form POST (D3).
 	 *
 	 * @param {HTMLElement} option Selected option element.
 	 * @return {HTMLElement} The chip li element.
@@ -200,6 +380,7 @@
 		var thumb  = document.createElement( 'span' );
 		var name   = document.createElement( 'span' );
 		var remove = document.createElement( 'button' );
+		var picker = option.closest( '.cwc-picker' );
 
 		li.className = 'cwc-chip';
 		li.setAttribute( 'data-id', option.value );
@@ -223,6 +404,14 @@
 		name.textContent = option.textContent;
 		li.appendChild( name );
 
+		// Edit-only inline controls (D5): the upload button, hidden
+		// attachment-id input and overlay-title input render only when the
+		// picker carries data-edit (edit mode). The form only emits the save
+		// nonce in edit mode, so create stays BC (AS-3).
+		if ( picker && picker.hasAttribute( 'data-edit' ) ) {
+			appendEditControls( li, option );
+		}
+
 		remove.type = 'button';
 		remove.className = 'cwc-chip-remove';
 		remove.textContent = strings.removeChip || '';
@@ -239,23 +428,78 @@
 	}
 
 	/**
-	 * Wires the upload button inside one category row.
+	 * Appends the inline upload + overlay-title controls to a chip.
 	 *
-	 * Creates a reusable wp.media frame (image-only, single select). On
-	 * selection it writes the attachment id into the row's hidden input and
-	 * refreshes the preview thumbnail. A "remove" button clears both.
+	 * The hidden input posts `cwc_cat_images[term_id]`; the upload button
+	 * drives the same wp.media frame as the former "Category images" rows
+	 * (AS-3), using the chip thumbnail as its live preview. The title input
+	 * posts `cwc_cat_titles[term_id]` and pre-fills from the option's stored
+	 * meta (`data-title`); an empty value deletes the meta on save
+	 * (sanitize_text_field, CR-9). Removing the chip does NOT clear the term
+	 * image — that meta is global to the term, not per carousel instance.
 	 *
-	 * @param {HTMLElement} row Category row element.
+	 * @param {HTMLElement} li     Chip element being built.
+	 * @param {HTMLElement} option Selected option with data attributes.
 	 * @return {void}
 	 */
-	function attachUploader( row ) {
+	function appendEditControls( li, option ) {
+		var imageId = document.createElement( 'input' );
+		var upload  = document.createElement( 'button' );
+		var title   = document.createElement( 'input' );
+
+		imageId.type = 'hidden';
+		imageId.className = 'cwc-cat-image-id';
+		imageId.name = 'cwc_cat_images[' + option.value + ']';
+		imageId.value = option.getAttribute( 'data-image-id' ) || '';
+
+		upload.type = 'button';
+		upload.className = 'button cwc-cat-image-upload';
+		upload.textContent = strings.chooseImage || '';
+
+		title.type = 'text';
+		title.className = 'cwc-cat-title-input';
+		title.name = 'cwc_cat_titles[' + option.value + ']';
+		title.value = option.getAttribute( 'data-title' ) || '';
+		title.placeholder = strings.overlayTitle || '';
+
+		li.appendChild( imageId );
+		li.appendChild( upload );
+		li.appendChild( title );
+
+		// The chip thumb doubles as the live preview; attachUploader restores
+		// the stored override from the hidden input when it carries an id.
+		attachUploader( li, li.querySelector( '.cwc-chip-thumb' ) );
+	}
+
+	/**
+	 * Wires the upload button inside one chip (or row).
+	 *
+	 * Creates a reusable wp.media frame (image-only, single select). On
+	 * selection it writes the attachment id into the element's hidden input
+	 * and refreshes the preview. A "remove image" button (when present)
+	 * clears both.
+	 *
+	 * @param {HTMLElement}  row     Chip or row element with the upload
+	 *                               controls.
+	 * @param {?HTMLElement} preview Preview element to refresh; defaults to
+	 *                               .cwc-cat-image-preview within the row.
+	 * @return {void}
+	 */
+	function attachUploader( row, preview ) {
 		var trigger = row.querySelector( '.cwc-cat-image-upload' );
 		var remove  = row.querySelector( '.cwc-cat-image-remove' );
 		var input   = row.querySelector( '.cwc-cat-image-id' );
-		var preview = row.querySelector( '.cwc-cat-image-preview' );
 		var frame;
 
-		if ( ! trigger || ! input || ! preview ) {
+		if ( ! trigger || ! input ) {
+			return;
+		}
+
+		if ( ! preview ) {
+			preview = row.querySelector( '.cwc-cat-image-preview' );
+		}
+
+		if ( ! preview ) {
 			return;
 		}
 
@@ -332,8 +576,8 @@
 	 * Renders an image into the preview, or clears it when there is no url.
 	 *
 	 * The PHP renderer prints either an attached `<img>` or an empty span
-	 * inside `.cwc-cat-image-preview`; replace its content with an `<img>` so
-	 * the live preview always shows one source.
+	 * inside the chip thumb / `.cwc-cat-image-preview`; replace its content
+	 * with an `<img>` so the live preview always shows one source.
 	 *
 	 * @param {HTMLElement} container Preview container element.
 	 * @param {string}      url      Image url to show, or '' to clear.

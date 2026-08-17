@@ -222,15 +222,18 @@ class CWC_Assets {
 
 		// All JS-facing strings live in cwcCarouselAdmin, so the media
 		// uploader and the picker chips never carry hardcoded literals
-		// (FA-5). Picker strings PRs 3-4 add extend this same object.
+		// (FA-5). The chip inline controls (PR 3) extend this same object;
+		// the products picker (PR 4) adds its own keys here too.
 		wp_localize_script(
 			'cwc-carousel-admin',
 			'cwcCarouselAdmin',
 			array(
-				'mediaTitle'  => __( 'Select an image for the category', 'cwc-carousel' ),
-				'mediaButton' => __( 'Use this image', 'cwc-carousel' ),
-				'sortHandle'  => __( 'Drag to reorder', 'cwc-carousel' ),
-				'removeChip'  => __( 'Remove', 'cwc-carousel' ),
+				'mediaTitle'   => __( 'Select an image for the category', 'cwc-carousel' ),
+				'mediaButton'  => __( 'Use this image', 'cwc-carousel' ),
+				'sortHandle'   => __( 'Drag to reorder', 'cwc-carousel' ),
+				'removeChip'   => __( 'Remove', 'cwc-carousel' ),
+				'chooseImage'  => __( 'Choose image', 'cwc-carousel' ),
+				'overlayTitle' => __( 'Overlay title', 'cwc-carousel' ),
 			)
 		);
 	}
