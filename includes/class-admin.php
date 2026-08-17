@@ -391,6 +391,15 @@ class CWC_Admin {
 				$current['categories'] = isset( $posted['categories'] )
 					? array_map( 'absint', (array) $posted['categories'] )
 					: array();
+
+				// Same coercion for the products picker (AS-12): a rejected
+				// create re-renders the product field with the posted values
+				// exactly as sanitize_instance() would persist them. An absent
+				// key (e.g. the picker never rendered for type=category) stays
+				// empty.
+				$current['products'] = isset( $posted['products'] )
+					? array_map( 'absint', (array) $posted['products'] )
+					: array();
 			}
 		}
 		$prefix = ( 'edit' === $mode ) ? 'cwc_carousel_registry[' . $slug . ']' : 'cwc_carousel_registry[__new__]';
@@ -445,6 +454,12 @@ class CWC_Admin {
 						<th scope="row"><?php esc_html_e( 'Categories', 'cwc-carousel' ); ?></th>
 						<td><?php $this->render_categories_field( $prefix, $current, 'edit' === $mode ); ?></td>
 					</tr>
+					<?php if ( 'product' === $current['type'] ) : ?>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Products', 'cwc-carousel' ); ?></th>
+						<td><?php $this->render_products_field( $prefix, $current ); ?></td>
+					</tr>
+					<?php endif; ?>
 					<?php if ( 'category' === $current['type'] ) : ?>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Cover mode', 'cwc-carousel' ); ?></th>
@@ -647,6 +662,79 @@ class CWC_Admin {
 		echo '<button type="button" class="button cwc-empty-cta"' . ( empty( $selected ) ? '' : ' hidden' ) . '>' . esc_html__( 'Add categories', 'cwc-carousel' ) . '</button>';
 		echo '</div>';
 		echo '<p class="description">' . esc_html__( 'Search and select categories; drag the chips to set the carousel order.', 'cwc-carousel' ) . '</p>';
+	}
+
+	/**
+	 * Renders the product/variation search picker (AS-12).
+	 *
+	 * A Select2 picker backed by WooCommerce's own
+	 * `woocommerce_json_search_products_and_variations` endpoint, so both
+	 * products and variations are selectable. Mirrors the categories picker
+	 * (AS-11): the select renders with the `enhanced` marker so
+	 * wc-enhanced-select.js skips it, and admin.js initializes selectWoo with
+	 * WC's own `search_products_nonce` plus `data-return_id="id"` so product
+	 * ids stay as values (sanitize_ids, AS-5). The field only renders for
+	 * `type=product` carousels — render_editor() gates the row — so a
+	 * `type=category` instance never shows it (AS-12, D2).
+	 *
+	 * Stored selections pre-render as `<option selected>` in STORED order —
+	 * no AJAX on load. Each option carries the product's featured image as
+	 * `data-thumb` so the chip thumbnail renders without extra requests.
+	 * Variations render too: the query passes the same `type` array the
+	 * renderer uses (every registered product type plus `variation`, D4) and
+	 * `limit` is lifted to the list length so the pre-render never truncates
+	 * a long manual list (bf49167 pattern). The label mirrors what the search
+	 * endpoint returns (`get_formatted_name()`, "Parent — Attribute: Value
+	 * (SKU)" for variations).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
+	 * @return void
+	 */
+	public function render_products_field( string $prefix, array $current ) {
+		$selected = array_map( 'absint', $current['products'] );
+
+		echo '<div class="cwc-picker">';
+		echo '<select name="' . esc_attr( $prefix ) . '[products][]" multiple="multiple" class="wc-product-search enhanced" data-action="woocommerce_json_search_products_and_variations" data-minimum_input_length="1" data-return_id="id" data-placeholder="' . esc_attr__( 'Search products…', 'cwc-carousel' ) . '">';
+
+		// A non-empty list pre-renders; an empty one leaves the select bare
+		// and admin.js still creates the chip list + CTA (same as categories).
+		if ( ! empty( $selected ) ) {
+			$products = wc_get_products(
+				array(
+					'include' => $selected,
+					'limit'   => count( $selected ),
+					'orderby' => 'post__in',
+					'status'  => 'publish',
+					'type'    => array_merge( array_keys( wc_get_product_types() ), array( 'variation' ) ),
+				)
+			);
+
+			if ( ! empty( $products ) ) {
+				foreach ( $products as $product ) {
+					if ( ! $product instanceof WC_Product ) {
+						continue;
+					}
+
+					$image_id = (int) $product->get_image_id();
+					$thumb    = ( $image_id > 0 ) ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : '';
+
+					echo '<option value="' . esc_attr( (string) $product->get_id() ) . '"'
+						. selected( in_array( (int) $product->get_id(), $selected, true ), true, false )
+						. ' data-thumb="' . esc_url( $thumb ) . '">'
+						. esc_html( $product->get_formatted_name() )
+						. '</option>';
+				}
+			}
+		}
+
+		echo '</select>';
+		echo '<ul class="cwc-chip-list"></ul>';
+		echo '<button type="button" class="button cwc-empty-cta"' . ( empty( $selected ) ? '' : ' hidden' ) . '>' . esc_html__( 'Add products', 'cwc-carousel' ) . '</button>';
+		echo '</div>';
+		echo '<p class="description">' . esc_html__( 'Search and select products; drag the chips to set the carousel order.', 'cwc-carousel' ) . '</p>';
 	}
 
 	/**
@@ -1124,14 +1212,15 @@ class CWC_Admin {
 	 *
 	 * Repurposed from the legacy global-option sanitizer (AS-5): every value is
 	 * validated/coerced here, exactly once — slides 1-12, gap 8-64, count int
-	 * ≥ 0, categories as positive ids, buy as a boolean, buy_text as text, type
-	 * within {product, category}. Unknown or invalid keys are normalized to
-	 * their defaults, never resurrected from the raw post (CM-2). The cover
-	 * keys (`cover`, `subcategories`, `title_align`) pass through raw:
-	 * CWC_Settings::normalize() runs unconditionally downstream on both call
-	 * sites (create_instance() and sanitize_registry()) and owns their coercion
-	 * — parse_bool for the two booleans, the title_align enum for the alignment
-	 * (D2/D5) — so this method does not repeat it.
+	 * ≥ 0, categories as positive ids, products as positive ids, buy as a
+	 * boolean, buy_text as text, type within {product, category}. Unknown or
+	 * invalid keys are normalized to their defaults, never resurrected from
+	 * the raw post (CM-2). The cover keys (`cover`, `subcategories`,
+	 * `title_align`) pass through raw: CWC_Settings::normalize() runs
+	 * unconditionally downstream on both call sites (create_instance() and
+	 * sanitize_registry()) and owns their coercion — parse_bool for the two
+	 * booleans, the title_align enum for the alignment (D2/D5) — so this
+	 * method does not repeat it.
 	 *
 	 * @since 0.1.0
 	 *
@@ -1151,6 +1240,7 @@ class CWC_Admin {
 		return array(
 			'type'          => ( 'category' === $type ) ? 'category' : 'product',
 			'categories'    => $this->settings->sanitize_ids( isset( $input['categories'] ) ? $input['categories'] : array() ),
+			'products'      => $this->settings->sanitize_ids( isset( $input['products'] ) ? $input['products'] : array() ),
 			'slides'        => $this->bound( $input, 'slides', 1, 12, $built['slides'] ),
 			'slides_tablet' => $this->bound( $input, 'slides_tablet', 1, 12, $built['slides_tablet'] ),
 			'slides_mobile' => $this->bound( $input, 'slides_mobile', 1, 12, $built['slides_mobile'] ),
