@@ -48,11 +48,15 @@ in one callback, with autoload disabled; rollback is `delete_option`.
 - THEN the option is not loaded into the autoload cache
 - AND `delete_option( 'cwc_carousel_options' )` fully resets to defaults
 
-### Requirement: AS-3 — Per-category custom image override
+### Requirement: AS-3 — Per-category image and overlay title (chip inline)
 
-For each chosen `product_cat` term, the panel MUST allow uploading a custom image
-stored as an attachment id in term meta; category carousels MUST use that image
-over the WC category `thumbnail_id` when present.
+For each chosen `product_cat` term, the category chip MUST offer inline controls
+to upload a custom image (term meta `cwc_cat_image`) and set an overlay title
+(term meta `cwc_cat_title`, `sanitize_text_field`, empty deletes), replacing the
+"Category images" section. Carousels MUST use the custom image over the WC
+`thumbnail_id` when present; the renderer reads `cwc_cat_title` for the cover
+overlay title (CR-9). Saving MUST keep the `manage_woocommerce` + nonce guard of
+`save_category_images()`.
 
 #### Scenario: Upload overrides thumbnail
 
@@ -64,17 +68,24 @@ over the WC category `thumbnail_id` when present.
 
 - GIVEN a term with no custom upload
 - WHEN the category card renders
-- THEN the WC category thumbnail is used
-- AND a placeholder is rendered when no thumbnail exists either
+- THEN the WC thumbnail (or a placeholder) is used
+
+#### Scenario: Title save/clear
+
+- GIVEN a chip with title "Verano", later cleared
+- WHEN the save handler runs
+- THEN `cwc_cat_title` stores "Verano", deletes on empty, and the renderer falls back to the term name (CR-9)
 
 ### Requirement: AS-5 — Registry option with per-slug sanitizer
 
 The plugin MUST store named carousels in one registered keyed array
 `cwc_carousel_registry` (`{ slug => full_config }`, autoload off). Its sanitize
-callback MUST run per slug, reusing today's field bounds (type within
-{product,category}, slides 1-12, gap 8-64, count ≥ 0, bools via `parse_bool`,
-`buy_text` via `clean_text`), scoped as `cwc_carousel_registry[slug][key]`. The
-page and all saves MUST stay gated by `manage_woocommerce` (AS-1).
+callback MUST run per slug, scoped as `cwc_carousel_registry[slug][key]`,
+reusing today's field bounds (type within {product,category}, slides 1-12, gap
+8-64, count ≥ 0, bools via `parse_bool`, `buy_text` and `title` via
+`clean_text`), and MUST additionally coerce `products` via `sanitize_ids()`
+(absint, values ≤ 0 dropped, fallback `[]`). The page and all saves MUST stay
+gated by `manage_woocommerce` (AS-1).
 
 #### Scenario: Save scoped per slug
 
@@ -87,7 +98,7 @@ page and all saves MUST stay gated by `manage_woocommerce` (AS-1).
 
 - GIVEN a user without `manage_woocommerce`
 - WHEN they submit the editor
-- THEN the save is rejected and no registry key is written
+- THEN the save is rejected, no registry key written
 
 ### Requirement: AS-6 — List view of instances
 
@@ -171,31 +182,70 @@ coerce them like the rest of the contract (bools via `parse_bool`,
 - THEN `title_align` coerces to `left`
 - AND the save succeeds with no fatal error
 
-### Requirement: AS-10 — Per-category overlay title term meta
+### Requirement: AS-11 — AJAX category search field
 
-Alongside the `cwc_cat_image` field (AS-3), the category-images group MUST
-render a per-category text input stored as `cwc_cat_title` term meta
-(`update_term_meta`/`delete_term_meta`), sanitized with `sanitize_text_field`.
-Saving MUST keep the existing capability + nonce guard of
-`save_category_images()`. The renderer reads this meta for the cover overlay
-title (CR-9).
+The categories field MUST be a Select2 AJAX search select (`.wc-category-search`,
+`data-action="woocommerce_json_search_categories"`,
+`data-minimum_input_length="1"`). Stored selections MUST pre-render as
+`<option value="term_id" selected>`; posted `[categories][]` MUST keep
+`sanitize_ids()`; chips MUST be sortable, reordering field options pre-submit.
 
-#### Scenario: Title saved per term
+#### Scenario: Search-to-add
 
-- GIVEN an authorized user enters "Verano" for term 7
-- WHEN the category-images save handler runs
-- THEN term meta `cwc_cat_title` for term 7 stores "Verano"
-- AND the value appears pre-filled on the next edit
+- GIVEN a product instance editor
+- WHEN the user types in the search
+- THEN matching `product_cat` terms load from the WC AJAX endpoint
+- AND choosing one adds its term ID
 
-#### Scenario: Empty title clears the meta
+#### Scenario: Pre-rendered chips keep order
 
-- GIVEN a previously saved `cwc_cat_title` and the user clears the field
-- WHEN the save handler runs
-- THEN the term meta is deleted
-- AND the renderer falls back to the term name (CR-9)
+- GIVEN an instance with categories dragged from `[7, 3]` to `[3, 7]`
+- WHEN the editor re-renders
+- THEN options 3 and 7 carry `selected` in that order, without AJAX
 
-#### Scenario: Capability gate holds
+### Requirement: AS-12 — Products picker (manual curation)
 
-- GIVEN a user without `manage_woocommerce`
-- WHEN they submit the form
-- THEN no term meta is written (guard mirrors AS-3)
+For `type=product` instances, the editor MUST render a `wc-product-search`
+Select2 field (`data-action="woocommerce_json_search_products_and_variations"`,
+products and variations selectable) storing the contract key `products` (default
+`[]`). Stored IDs MUST pre-render as `<option selected>`; assigned chips MUST be
+sortable and synced to the field option order pre-submit. It MUST NOT render for
+`type=category`; empty list shows an "Add products" CTA.
+
+#### Scenario: Search-add + CTA
+
+- GIVEN a product instance with `products = []`
+- WHEN the user searches and selects
+- THEN an "Add products" CTA shows until a selection exists
+- AND selecting appends its ID to `products`
+
+### Requirement: AS-14 — Admin i18n strings
+
+All admin-facing strings MUST be translatable with the plugin text domain; the
+two hardcoded Spanish strings in `admin.js` MUST come from `wp_localize_script`;
+es_ES `.po`/`.mo` MUST be recompiled via `tools/make-mo.php`.
+
+#### Scenario: es_ES translated
+
+- GIVEN a Spanish site
+- WHEN the admin page renders
+- THEN no admin string falls back to English
+
+### Requirement: AS-15 — Editable display title
+
+The editor MUST render a "Title" text field — independent of the instance slug
+(shortcode `name`) — that edits the `title` config key via `sanitize_text_field`
+(`clean_text`, fallback empty). A non-empty title MUST render as the carousel
+heading; an empty title MUST omit the heading (CR-1).
+
+#### Scenario: Title round-trips
+
+- GIVEN a carousel whose Title is set to "Spring Collection"
+- WHEN the editor saves
+- THEN `title` stores "Spring Collection" and the front end renders it as the heading
+
+#### Scenario: Empty title hides heading
+
+- GIVEN a carousel with an empty Title
+- WHEN the carousel renders
+- THEN no heading is emitted
