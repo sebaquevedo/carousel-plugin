@@ -4,8 +4,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Custom Woo Pro Carousel 0.1.0\n"
 "Report-Msgid-Bugs-To: https://github.com/sebaquevedo/carousel-plugin\n"
-"POT-Creation-Date: 2026-08-16 18:00+0000\n"
-"PO-Revision-Date: 2026-08-16 18:00+0000\n"
+"POT-Creation-Date: 2026-08-17 12:00+0000\n"
+"PO-Revision-Date: 2026-08-17 12:00+0000\n"
 "Last-Translator: Custom Woo Pro Carousel contributors\n"
 "Language-Team: Spanish (Spain) <https://github.com/sebaquevedo/carousel-plugin>\n"
 "Language: es_ES\n"
@@ -64,7 +64,47 @@ msgstr "Centro"
 msgid "Right"
 msgstr "Derecha"
 
-#. Per-category overlay title input label (AS-10).
-#: includes/class-admin.php
+#. Per-category overlay title input label and chip placeholder (AS-3).
+#: includes/class-admin.php includes/class-assets.php
 msgid "Overlay title"
 msgstr "Título superpuesto"
+
+#. wp.media frame title for the inline per-chip uploader (AS-3).
+#: includes/class-assets.php
+msgid "Select an image for the category"
+msgstr "Selecciona una imagen para la categoría"
+
+#. wp.media frame select button (AS-3).
+#: includes/class-assets.php
+msgid "Use this image"
+msgstr "Usar esta imagen"
+
+#. Chip drag-handle tooltip (D1).
+#: includes/class-assets.php
+msgid "Drag to reorder"
+msgstr "Arrastrar para reordenar"
+
+#. Chip remove-button label (D3).
+#: includes/class-assets.php
+msgid "Remove"
+msgstr "Quitar"
+
+#. Chip upload button label (AS-3).
+#: includes/class-assets.php
+msgid "Choose image"
+msgstr "Elegir imagen"
+
+#. Category search picker placeholder (AS-11).
+#: includes/class-admin.php
+msgid "Search categories…"
+msgstr "Buscar categorías…"
+
+#. Category picker empty-state CTA (AS-12).
+#: includes/class-admin.php
+msgid "Add categories"
+msgstr "Añadir categorías"
+
+#. Category picker description (AS-11).
+#: includes/class-admin.php
+msgid "Search and select categories; drag the chips to set the carousel order."
+msgstr "Busca y selecciona categorías; arrastra las etiquetas para fijar el orden del carrusel."
