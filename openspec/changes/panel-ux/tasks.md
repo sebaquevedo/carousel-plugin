@@ -46,9 +46,9 @@ Chain base: main or previous PR branch (orchestrator resolves `chain_strategy`).
 
 ## Phase 3: Categories Picker (PR 3)
 
-- [ ] 3.1 `includes/class-admin.php`: categories field → `select.wc-category-search` (`woocommerce_json_search_categories`, min_length 1, `hide_empty=false`), `<option selected>` pre-render in stored order (AS-11)
-- [ ] 3.2 Replace "Category images" section: per-chip inline upload (`cwc_cat_image`) + overlay title (`cwc_cat_title`, `sanitize_text_field`, empty deletes); keep `save_category_images()` nonce + cap guard (AS-3)
-- [ ] 3.3 `languages/*`: extract new strings via `__()`; recompile `tools/make-mo.php` (AS-14)
+- [x] 3.1 `includes/class-admin.php`: categories field → `select.wc-category-search` (`woocommerce_json_search_categories`, min_length 1, `hide_empty=false`), `<option selected>` pre-render in stored order (AS-11)
+- [x] 3.2 Replace "Category images" section: per-chip inline upload (`cwc_cat_image`) + overlay title (`cwc_cat_title`, `sanitize_text_field`, empty deletes); keep `save_category_images()` nonce + cap guard (AS-3)
+- [x] 3.3 `languages/*`: extract new strings via `__()`; recompile `tools/make-mo.php` (AS-14)
 
 **Acceptance**: search-add works; order persists; upload overrides `thumbnail_id`; es_ES no fallback.
 
