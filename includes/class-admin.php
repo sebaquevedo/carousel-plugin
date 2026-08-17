@@ -443,7 +443,7 @@ class CWC_Admin {
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Categories', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_categories_field( $prefix, $current ); ?></td>
+						<td><?php $this->render_categories_field( $prefix, $current, 'edit' === $mode ); ?></td>
 					</tr>
 					<?php if ( 'category' === $current['type'] ) : ?>
 					<tr>
@@ -483,11 +483,14 @@ class CWC_Admin {
 				<?php
 				submit_button();
 
-				// Per-category image overrides belong to the instance being
-				// edited (its selected categories drive which terms can get an
-				// override); create has no persisted categories yet (AS-3).
+				// Per-category image/title overrides ride the same form with a
+				// dedicated nonce + capability (AS-3): the chip controls post
+				// `cwc_cat_images[term_id]` / `cwc_cat_titles[term_id]`, which
+				// save_category_images() persists on admin_init. Edit only —
+				// create has no persisted categories yet, and a create-mode
+				// nonce would wp_die on save (BC).
 				if ( 'edit' === $mode ) {
-					$this->render_category_images( $current['categories'] );
+					wp_nonce_field( $this->image_nonce_action, $this->image_nonce_field );
 				}
 				?>
 			</form>
@@ -564,42 +567,86 @@ class CWC_Admin {
 	}
 
 	/**
-	 * Renders the product_cat multiselect field.
+	 * Renders the product_cat search picker (AS-11).
 	 *
-	 * The chosen term ids are stored as the `categories` config used as the
-	 * mix seed and the category-card set.
+	 * A Select2 picker backed by WooCommerce's own
+	 * `woocommerce_json_search_categories` endpoint. The select renders with
+	 * the `enhanced` marker so wc-enhanced-select.js skips it: WC 11.0's
+	 * stock auto-init does not forward `show_empty` to the endpoint (the
+	 * previous native field listed empty categories — hide_empty=false) and
+	 * binds an alphabetical reorder on multiple selects that would fight the
+	 * chip drag order (D1). admin.js initializes selectWoo with WC's own
+	 * nonce/format strings plus `show_empty: 1` and `data-return_id="id"`
+	 * keeps term ids as values (sanitize_ids, AS-11).
+	 *
+	 * Stored selections pre-render as `<option selected>` in STORED order —
+	 * no AJAX on load. Each option carries the per-term image/title meta
+	 * (cwc_cat_image / cwc_cat_title, AS-3) as data attributes so the chip
+	 * controls render without extra requests. When `$edit_mode` is true the
+	 * picker renders `data-edit="1"` and admin.js appends the inline
+	 * upload/overlay-title controls per chip (D5); the save nonce is
+	 * emitted separately by render_editor() (AS-3).
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
-	 * @param array  $current Instance config to pre-fill.
+	 * @param string $prefix    Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current   Instance config to pre-fill.
+	 * @param bool   $edit_mode Whether inline chip edit controls render
+	 *                          (edit mode only; D5).
 	 * @return void
 	 */
-	public function render_categories_field( string $prefix, array $current ) {
+	public function render_categories_field( string $prefix, array $current, bool $edit_mode ) {
 		$selected = array_map( 'absint', $current['categories'] );
-		$terms    = get_terms(
-			array(
-				'taxonomy'   => 'product_cat',
-				'hide_empty' => false,
-			)
-		);
 
-		if ( empty( $terms ) || is_wp_error( $terms ) ) {
-			echo '<p class="description">' . esc_html__( 'No product categories found.', 'cwc-carousel' ) . '</p>';
-			return;
-		}
+		echo '<div class="cwc-picker"' . ( $edit_mode ? ' data-edit="1"' : '' ) . '>';
+		echo '<select name="' . esc_attr( $prefix ) . '[categories][]" multiple="multiple" class="wc-category-search enhanced" data-action="woocommerce_json_search_categories" data-minimum_input_length="1" data-return_id="id" data-placeholder="' . esc_attr__( 'Search categories…', 'cwc-carousel' ) . '">';
 
-		echo '<select name="' . esc_attr( $prefix ) . '[categories][]" multiple="multiple" size="6" class="cwc-categories-select">';
-		foreach ( $terms as $term ) {
-			if ( ! $term instanceof WP_Term ) {
-				continue;
+		// get_terms() with an empty `include` list returns ALL terms, so the
+		// query only runs when something is stored; a bare picker renders as
+		// an empty select and admin.js still creates the chip list + CTA.
+		if ( ! empty( $selected ) ) {
+			$terms = get_terms(
+				array(
+					'taxonomy'   => 'product_cat',
+					'include'    => $selected,
+					'hide_empty' => false,
+					'orderby'    => 'include',
+				)
+			);
+
+			if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
+				foreach ( $terms as $term ) {
+					if ( ! $term instanceof WP_Term ) {
+						continue;
+					}
+
+					// Chip thumbnail: the custom upload overrides the WC
+					// thumbnail — same priority as CWC_Renderer (AS-3).
+					$image_id = (int) get_term_meta( $term->term_id, $this->image_meta_key, true );
+
+					if ( $image_id <= 0 ) {
+						$image_id = (int) get_term_meta( $term->term_id, 'thumbnail_id', true );
+					}
+
+					$thumb = ( $image_id > 0 ) ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : '';
+					$title = sanitize_text_field( (string) get_term_meta( $term->term_id, $this->title_meta_key, true ) );
+
+					echo '<option value="' . esc_attr( $term->term_id ) . '"'
+						. selected( in_array( (int) $term->term_id, $selected, true ), true, false )
+						. ' data-thumb="' . esc_url( $thumb ) . '"'
+						. ' data-image-id="' . esc_attr( (string) $image_id ) . '"'
+						. ' data-title="' . esc_attr( $title ) . '">'
+						. esc_html( $term->name )
+						. '</option>';
+				}
 			}
-			echo '<option value="' . esc_attr( $term->term_id ) . '"'
-				. selected( in_array( (int) $term->term_id, $selected, true ), true, false )
-				. '>' . esc_html( $term->name ) . '</option>';
 		}
+
 		echo '</select>';
-		echo '<p class="description">' . esc_html__( 'Hold Ctrl (Cmd on Mac) to select several.', 'cwc-carousel' ) . '</p>';
+		echo '<ul class="cwc-chip-list"></ul>';
+		echo '<button type="button" class="button cwc-empty-cta"' . ( empty( $selected ) ? '' : ' hidden' ) . '>' . esc_html__( 'Add categories', 'cwc-carousel' ) . '</button>';
+		echo '</div>';
+		echo '<p class="description">' . esc_html__( 'Search and select categories; drag the chips to set the carousel order.', 'cwc-carousel' ) . '</p>';
 	}
 
 	/**
@@ -783,90 +830,6 @@ class CWC_Admin {
 		}
 
 		echo '</select>';
-	}
-
-	/**
-	 * Renders the per-category custom image override group (AS-3).
-	 *
-	 * A row with a hidden attachment-id input, a preview, an Upload button
-	 * renders for each chosen category. The hidden input carries the term id so
-	 * admin.js can drive wp.media per term. Each row also carries a text input
-	 * for the cover overlay title (`cwc_cat_titles[term_id]`), pre-filled from
-	 * the existing `cwc_cat_title` term meta (AS-10); the renderer reads it for
-	 * the cover card's centered title (CR-9). Saving is handled separately by
-	 * save_category_images() to keep term side-effects out of the sanitizer.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @param array|null $categories Optional category ids for the edited
-	 *                               instance; when null the legacy global
-	 *                               option drives the list (fallback).
-	 * @return void
-	 */
-	public function render_category_images( $categories = null ) {
-		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			return;
-		}
-
-		$current = $this->current();
-
-		if ( is_array( $categories ) ) {
-			$current['categories'] = $categories;
-		}
-
-		$term_ids = array_map( 'absint', $current['categories'] );
-
-		if ( empty( $term_ids ) ) {
-			echo '<p>' . esc_html__( 'Select categories above to set a custom image per category.', 'cwc-carousel' ) . '</p>';
-			return;
-		}
-
-		$terms = get_terms(
-			array(
-				'taxonomy'   => 'product_cat',
-				'include'    => $term_ids,
-				'hide_empty' => false,
-			)
-		);
-
-		if ( empty( $terms ) || is_wp_error( $terms ) ) {
-			echo '<p>' . esc_html__( 'No selected categories were found.', 'cwc-carousel' ) . '</p>';
-			return;
-		}
-
-		wp_nonce_field( $this->image_nonce_action, $this->image_nonce_field );
-
-		echo '<h2>' . esc_html__( 'Category images', 'cwc-carousel' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Optionally set a custom image that overrides the WooCommerce category thumbnail.', 'cwc-carousel' ) . '</p>';
-
-		foreach ( $terms as $term ) {
-			if ( ! $term instanceof WP_Term ) {
-				continue;
-			}
-
-			$image_id = (int) get_term_meta( $term->term_id, $this->image_meta_key, true );
-			$preview  = ( $image_id > 0 ) ? wp_get_attachment_image( $image_id, 'thumbnail' ) : '';
-			$title    = sanitize_text_field( (string) get_term_meta( $term->term_id, $this->title_meta_key, true ) );
-
-			printf(
-				'<div class="cwc-category-image-row" data-term-id="%1$d">'
-				. '<span class="cwc-cat-image-preview">%2$s</span>'
-				. '<input type="hidden" name="cwc_cat_images[%1$d]" class="cwc-cat-image-id" value="%3$d" />'
-				. '<button type="button" class="button cwc-cat-image-upload">%4$s</button>'
-				. '<button type="button" class="button-link-delete cwc-cat-image-remove">%5$s</button>'
-				. '<p class="cwc-cat-image-term">%6$s</p>'
-				. '<p><label for="cwc-cat-title-%1$d">' . esc_html__( 'Overlay title', 'cwc-carousel' ) . '</label> '
-				. '<input type="text" id="cwc-cat-title-%1$d" name="cwc_cat_titles[%1$d]" value="%7$s" class="cwc-cat-title-input" /></p>'
-				. '</div>',
-				(int) $term->term_id,
-				$preview, // phpcs:ignore WordPress.Security.EscapeOutput -- wp_get_attachment_image() escapes internally.
-				absint( $image_id ),
-				esc_html__( 'Choose image', 'cwc-carousel' ),
-				esc_html__( 'Remove image', 'cwc-carousel' ),
-				esc_html( $term->name ),
-				esc_attr( $title )
-			);
-		}
 	}
 
 	/**
@@ -1223,22 +1186,6 @@ class CWC_Admin {
 			return $this->settings->normalize( $registry[ $slug ] );
 		}
 
-		return $this->settings->defaults();
-	}
-
-	/**
-	 * Returns the current stored legacy option merged over built-in defaults.
-	 *
-	 * Reuses CWC_Settings::defaults() so rollback via delete_option() is exact
-	 * (the option reads back to built-ins). Only drives the category-images
-	 * fallback now (the instance editor reads the registry via
-	 * instance_current()).
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return array Current global option keyed by resolved config keys.
-	 */
-	private function current() {
 		return $this->settings->defaults();
 	}
 
