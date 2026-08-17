@@ -108,3 +108,18 @@ msgstr "Añadir categorías"
 #: includes/class-admin.php
 msgid "Search and select categories; drag the chips to set the carousel order."
 msgstr "Busca y selecciona categorías; arrastra las etiquetas para fijar el orden del carrusel."
+
+#. Product search picker placeholder (AS-12).
+#: includes/class-admin.php
+msgid "Search products…"
+msgstr "Buscar productos…"
+
+#. Products picker empty-state CTA (AS-12).
+#: includes/class-admin.php
+msgid "Add products"
+msgstr "Añadir productos"
+
+#. Products picker description (AS-12).
+#: includes/class-admin.php
+msgid "Search and select products; drag the chips to set the carousel order."
+msgstr "Busca y selecciona productos; arrastra las etiquetas para fijar el orden del carrusel."
