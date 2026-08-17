@@ -162,15 +162,20 @@ class CWC_Assets {
 	}
 
 	/**
-	 * Enqueues the admin uploader only on the Carousel settings screen.
+	 * Enqueues admin assets only on the Carousel settings screen.
 	 *
 	 * Runs on admin_enqueue_scripts but loads nothing on any other admin
 	 * screen (D7, FA-5): the screen hook suffix of the Carousel submenu is
 	 * `-page_cwc-carousel` (WooCommerce parent), and the page itself is gated
-	 * by the `manage_woocommerce` capability. wp_enqueue_media() primes the
-	 * wp.media library that admin.js drives; the script only hands the asset
-	 * the single hidden attachment-id input and preview fields, so no script
-	 * locals are needed.
+	 * by the `manage_woocommerce` capability. On that page the enqueue pulls
+	 * WooCommerce's own enhanced-select (selectWoo) and admin stylesheet for
+	 * the picker widgets PRs 3-4 render, jquery-ui-sortable for the chip
+	 * drag & drop, the plugin admin.css for the chip chrome, and wp.media for
+	 * the category-image uploader. WC registers `wc-enhanced-select` and
+	 * `woocommerce_admin_styles` on every admin request — only the enqueue is
+	 * screen-gated — so enqueueing the handles here is sufficient. The script
+	 * receives its translatable strings through `cwcCarouselAdmin` via
+	 * wp_localize_script, so admin.js never hardcodes literals (FA-5).
 	 *
 	 * @since 0.1.0
 	 * @return void
@@ -186,13 +191,47 @@ class CWC_Assets {
 			return;
 		}
 
+		// Select2 chrome and AJAX search come from WooCommerce's own handles,
+		// both registered on every admin request (FA-5, D3).
+		wp_enqueue_style( 'woocommerce_admin_styles' );
+		wp_enqueue_script( 'wc-enhanced-select' );
+
+		// The plugin stylesheet styles the chip list, drag handle and
+		// empty-state CTA (D3); it depends on the WC admin styles so the
+		// Select2 chrome loads first. The handle intentionally mirrors the
+		// script handle — WordPress keeps separate style/script registries,
+		// matching WooCommerce's own `woocommerce_admin` pair.
+		wp_enqueue_style(
+			'cwc-carousel-admin',
+			CWC_URL . 'assets/css/admin.css',
+			array( 'woocommerce_admin_styles' ),
+			CWC_VERSION
+		);
+
+		// wp.media primes the uploader admin.js drives; jquery-ui-sortable
+		// powers the chip drag & drop; wc-enhanced-select is a dependency of
+		// the pickers PRs 3-4 wire up.
 		wp_enqueue_media();
 		wp_enqueue_script(
 			'cwc-carousel-admin',
 			CWC_URL . 'assets/js/admin.js',
-			array( 'jquery' ),
+			array( 'jquery', 'jquery-ui-sortable', 'wc-enhanced-select' ),
 			CWC_VERSION,
 			true
+		);
+
+		// All JS-facing strings live in cwcCarouselAdmin, so the media
+		// uploader and the picker chips never carry hardcoded literals
+		// (FA-5). Picker strings PRs 3-4 add extend this same object.
+		wp_localize_script(
+			'cwc-carousel-admin',
+			'cwcCarouselAdmin',
+			array(
+				'mediaTitle'  => __( 'Select an image for the category', 'cwc-carousel' ),
+				'mediaButton' => __( 'Use this image', 'cwc-carousel' ),
+				'sortHandle'  => __( 'Drag to reorder', 'cwc-carousel' ),
+				'removeChip'  => __( 'Remove', 'cwc-carousel' ),
+			)
 		);
 	}
 }
