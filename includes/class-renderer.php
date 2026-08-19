@@ -42,10 +42,25 @@ class CWC_Renderer {
 	 * each instance carries its own Swiper options (CR-7) — the resolved
 	 * contract always carries the 13 extended keys (CM-9), so every instance
 	 * exposes them (CR-11). The wrapper gains a nav-position modifier class
-	 * only when the corner differs from the default bottom-right, and a style
+	 * only when the position differs from the default bottom-right, and a style
 	 * attribute listing one CSS custom property per non-empty nav color
 	 * (CR-11, D6); legacy markup therefore stays byte-identical in wrapper
 	 * class and style.
+	 *
+	 * The two side modes extend the corners (CR-11 amendment, D6 amendment):
+	 * `sides-inside` is the corner path — the container carries the
+	 * `cwc-carousel--nav-sides-inside` class and the color variables, and the
+	 * arrows stay inside `.swiper` where Swiper places them absolutely
+	 * (carousel.css centers them vertically). `sides-outside` wraps the whole
+	 * carousel in a `.cwc-carousel-shell` flex wrapper: the prev/next buttons
+	 * render as flanking SIBLINGS of the slider, the shell carries the nav
+	 * class and the color variables, and the inner `.swiper` keeps the base
+	 * classes plus `data-cwc-config` (so frontend.js still selects
+	 * `.cwc-carousel.swiper` and reads the config from the slider itself).
+	 * The shell only renders when the position is `sides-outside` AND arrows
+	 * are enabled — without buttons there is nothing to flank, so the corner
+	 * path (class only) applies instead. Default + the four corners emit
+	 * today's markup byte-for-byte.
 	 *
 	 * @since 0.1.0
 	 *
@@ -74,19 +89,34 @@ class CWC_Renderer {
 			$output .= '<h2 class="' . esc_attr( $title_class ) . '">' . esc_html( $config['title'] ) . '</h2>';
 		}
 
+		// The shell only makes sense when there are buttons to flank the
+		// slider with: `sides-outside` with arrows off falls back to the
+		// corner path (class on the container, no shell) so no dead wrapper
+		// markup is emitted (CR-11 amendment).
+		$is_sides_outside = 'sides-outside' === $config['nav_position'] && ! empty( $config['arrows'] );
+
 		$container_class = 'cwc-carousel swiper';
 
 		if ( 'category' === $config['type'] && ! empty( $config['cover'] ) ) {
 			$container_class .= ' cwc-carousel--cover';
 		}
 
-		// Nav-position wrapper class (CR-11, D6): emitted only when the corner
-		// differs from the default bottom-right, so the default emits today's
-		// class-less markup (BC). resolve()/normalize() guarantee the corner
-		// whitelist (CM-13); the empty() guard also keeps a raw legacy config
-		// from emitting a stray class or a PHP notice.
+		// Nav-position modifier class (CR-11, D6): emitted only when the
+		// position differs from the default bottom-right, so the default emits
+		// today's class-less markup (BC). resolve()/normalize() guarantee the
+		// position whitelist (CM-13); the empty() guard also keeps a raw legacy
+		// config from emitting a stray class or a PHP notice. For
+		// sides-outside the class travels on the SHELL, not on the inner
+		// slider — the slider keeps its base classes so frontend.js selects it
+		// exactly as today (`.cwc-carousel.swiper`, no double init).
+		$nav_class = '';
+
 		if ( ! empty( $config['nav_position'] ) && 'bottom-right' !== $config['nav_position'] ) {
-			$container_class .= ' cwc-carousel--nav-' . $config['nav_position'];
+			$nav_class = ' cwc-carousel--nav-' . $config['nav_position'];
+		}
+
+		if ( ! $is_sides_outside ) {
+			$container_class .= $nav_class;
 		}
 
 		// Nav-color CSS variables (CR-11, D6): one custom property per
@@ -94,7 +124,9 @@ class CWC_Renderer {
 		// emitted set can never drift from normalize()'s coercion set (D2).
 		// Empty colors emit no variable — carousel.css falls back to the theme
 		// default (FA-3). The whole style attribute is escaped once at the
-		// single output point below.
+		// single output point below. For sides-outside the variables move to
+		// the shell so the flanking buttons (siblings of `.swiper`, not
+		// descendants) still inherit them.
 		$nav_colors = array();
 		$settings   = new CWC_Settings();
 
@@ -109,11 +141,19 @@ class CWC_Renderer {
 			$nav_colors[] = '--cwc-nav-color-' . $suffix . ':' . $config[ $color_key ];
 		}
 
-		$container_style = empty( $nav_colors )
+		$style_attr = empty( $nav_colors )
 			? ''
 			: ' style="' . esc_attr( implode( ';', $nav_colors ) . ';' ) . '"';
 
-		$output .= '<div class="' . esc_attr( $container_class ) . '"' . $container_style . ' data-cwc-config="' . esc_attr( wp_json_encode( $config ) ) . '">';
+		// The shell's class is escaped as one unit with the nav modifier; the
+		// inner slider keeps the base classes and carries `data-cwc-config`
+		// (frontend.js reads the config from the slider, CR-7).
+		if ( $is_sides_outside ) {
+			$output .= '<div class="cwc-carousel-shell' . esc_attr( $nav_class ) . '"' . $style_attr . '>';
+			$output .= '<div class="swiper-button-prev"></div>';
+		}
+
+		$output .= '<div class="' . esc_attr( $container_class ) . '"' . ( $is_sides_outside ? '' : $style_attr ) . ' data-cwc-config="' . esc_attr( wp_json_encode( $config ) ) . '">';
 		$output .= '<div class="swiper-wrapper">';
 
 		if ( 'category' === $config['type'] ) {
@@ -136,12 +176,20 @@ class CWC_Renderer {
 			$output .= '<div class="swiper-pagination"></div>';
 		}
 
-		if ( ! empty( $config['arrows'] ) ) {
+		// Arrows render INSIDE the slider for every mode except sides-outside,
+		// where they flank it as shell siblings (opened before the slider
+		// above, closed after it below).
+		if ( ! $is_sides_outside && ! empty( $config['arrows'] ) ) {
 			$output .= '<div class="swiper-button-prev"></div>';
 			$output .= '<div class="swiper-button-next"></div>';
 		}
 
 		$output .= '</div>';
+
+		if ( $is_sides_outside ) {
+			$output .= '<div class="swiper-button-next"></div>';
+			$output .= '</div>';
+		}
 
 		return $output;
 	}
