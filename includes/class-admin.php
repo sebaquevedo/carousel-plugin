@@ -318,6 +318,17 @@ class CWC_Admin {
 	/**
 	 * Renders the per-instance editor for `edit` or `create` (AS-7).
 	 *
+	 * The editor renders four nav-tab panels — Content / Behavior /
+	 * Navigation / Style — over the ONE form and ONE submit (AS-16): every
+	 * panel's fields stay in the DOM regardless of the active tab, so the
+	 * Settings API nonce and the single submit never depend on JS (D5). Tab
+	 * switching is a pure client-side visibility toggle in admin.js; without
+	 * JS all panels render stacked and the form saves as today. Conditional
+	 * rows stay in Content: the type=product products picker (AS-12) and the
+	 * type=category cover field (AS-9) render only inside the Content panel.
+	 * Edit mode also shows a read-only header shortcode field with a copy
+	 * button (AS-17).
+	 *
 	 * The field renderers are reused with a per-instance name prefix
 	 * (`cwc_carousel_registry[slug][key]`, or `... [__new__][key]` while
 	 * creating). Edit posts to options.php through the Settings API; create
@@ -400,6 +411,17 @@ class CWC_Admin {
 				$current['products'] = isset( $posted['products'] )
 					? array_map( 'absint', (array) $posted['products'] )
 					: array();
+
+				// New-key re-fill (D3, AS-18): route the whole re-rendered
+				// config through the shared normalize() — the same coerce
+				// point a successful save applies — so slides_laptop, timeout
+				// and speed display at exactly the clamped values a save would
+				// persist and the new booleans round-trip through parse_bool.
+				// Idempotent on the bounded keys above (absint of an
+				// already-clamped int is a no-op); the legacy ranges stay
+				// literal here only because normalize() does not clamp
+				// slides / slides_tablet / slides_mobile (CM-13).
+				$current = $this->settings->normalize( $current );
 			}
 		}
 		$prefix = ( 'edit' === $mode ) ? 'cwc_carousel_registry[' . $slug . ']' : 'cwc_carousel_registry[__new__]';
@@ -428,6 +450,24 @@ class CWC_Admin {
 			<?php settings_errors(); ?>
 			<p><a href="<?php echo esc_url( add_query_arg( 'page', $this->page_slug, admin_url( 'admin.php' ) ) ); ?>">&larr; <?php esc_html_e( 'Back to carousels', 'cwc-carousel' ); ?></a></p>
 
+			<?php if ( 'edit' === $mode ) : ?>
+				<?php
+				// Editor header shortcode field (AS-17): a read-only rendering of
+				// the exact shortcode to paste, with a copy button. The button's
+				// two labels travel as data-* attributes so no new localized
+				// strings are needed in class-assets.php (D8); admin.js swaps
+				// them after a successful copy.
+				$shortcode_id = 'cwc-shortcode-' . $slug;
+				?>
+				<div class="cwc-shortcode-field">
+					<label for="<?php echo esc_attr( $shortcode_id ); ?>"><?php esc_html_e( 'Shortcode', 'cwc-carousel' ); ?></label>
+					<div class="cwc-shortcode-row">
+						<input type="text" id="<?php echo esc_attr( $shortcode_id ); ?>" class="cwc-shortcode-input" value="<?php echo esc_attr( sprintf( '[cwc_carousel name="%s"]', $slug ) ); ?>" readonly />
+						<button type="button" class="button cwc-shortcode-copy" data-copy-target="<?php echo esc_attr( $shortcode_id ); ?>" data-copy-label="<?php echo esc_attr__( 'Copy', 'cwc-carousel' ); ?>" data-copied-label="<?php echo esc_attr__( 'Copied!', 'cwc-carousel' ); ?>"><?php esc_html_e( 'Copy', 'cwc-carousel' ); ?></button>
+					</div>
+				</div>
+			<?php endif; ?>
+
 			<form method="post" action="<?php echo esc_url( $action_url ); ?>">
 				<?php
 				if ( 'edit' === $mode ) {
@@ -444,61 +484,112 @@ class CWC_Admin {
 						. '<input type="text" id="cwc_new_slug" name="cwc_new_slug" maxlength="40" value="' . esc_attr( $posted_name ) . '" /></p>';
 					echo '<p class="description">' . esc_html__( 'Lowercase letters, numbers and hyphens. This is the value of the name="…" attribute in [cwc_carousel].', 'cwc-carousel' ) . '</p>';
 				}
+
+				// Four nav-tab panels over the ONE form and ONE submit (AS-16):
+				// every panel's fields stay in the DOM regardless of the active
+				// tab, so the Settings API nonce and the single submit never
+				// depend on JS (D5). Panels render WITHOUT the hidden attribute
+				// so a JS-free browser sees all four stacked; admin.js hides the
+				// inactive ones and wires the roving-tabindex tab behavior.
+				$tabs = array(
+					'content'    => __( 'Content', 'cwc-carousel' ),
+					'behavior'   => __( 'Behavior', 'cwc-carousel' ),
+					'navigation' => __( 'Navigation', 'cwc-carousel' ),
+					'style'      => __( 'Style', 'cwc-carousel' ),
+				);
 				?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Title', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_title_field( $prefix, $current ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Carousel type', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_type_field( $prefix, $current ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Categories', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_categories_field( $prefix, $current, 'edit' === $mode ); ?></td>
-					</tr>
-					<?php if ( 'product' === $current['type'] ) : ?>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Products', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_products_field( $prefix, $current ); ?></td>
-					</tr>
-					<?php endif; ?>
-					<?php if ( 'category' === $current['type'] ) : ?>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Cover mode', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_cover_field( $prefix, $current ); ?></td>
-					</tr>
-					<?php endif; ?>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Subcategories', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_subcategories_field( $prefix, $current ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Title alignment', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_title_align_field( $prefix, $current ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Slides', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_slides_field( $prefix, $current ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Gap (px)', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_gap_field( $prefix, $current ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Maximum items', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_count_field( $prefix, $current ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Buy button', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_buy_field( $prefix, $current ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Controls', 'cwc-carousel' ); ?></th>
-						<td><?php $this->render_controls_field( $prefix, $current ); ?></td>
-					</tr>
-				</table>
+				<div class="nav-tab-wrapper cwc-tabs" role="tablist" aria-label="<?php echo esc_attr__( 'Carousel settings', 'cwc-carousel' ); ?>">
+					<?php
+					$first_tab = true;
+					foreach ( $tabs as $tab_key => $tab_label ) :
+						?>
+						<button type="button" role="tab" id="cwc-tab-<?php echo esc_attr( $tab_key ); ?>" class="nav-tab<?php echo $first_tab ? ' nav-tab-active' : ''; ?>" aria-controls="cwc-panel-<?php echo esc_attr( $tab_key ); ?>" aria-selected="<?php echo $first_tab ? 'true' : 'false'; ?>" data-cwc-tab="<?php echo esc_attr( $tab_key ); ?>" tabindex="<?php echo $first_tab ? '0' : '-1'; ?>"><?php echo esc_html( $tab_label ); ?></button>
+						<?php
+						$first_tab = false;
+					endforeach;
+					?>
+				</div>
+
+				<div class="cwc-panel" id="cwc-panel-content" role="tabpanel" aria-labelledby="cwc-tab-content" data-cwc-panel="content">
+					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Title', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_title_field( $prefix, $current ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Carousel type', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_type_field( $prefix, $current ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Categories', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_categories_field( $prefix, $current, 'edit' === $mode ); ?></td>
+						</tr>
+						<?php if ( 'product' === $current['type'] ) : ?>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Products', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_products_field( $prefix, $current ); ?></td>
+						</tr>
+						<?php endif; ?>
+						<?php if ( 'category' === $current['type'] ) : ?>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Cover mode', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_cover_field( $prefix, $current ); ?></td>
+						</tr>
+						<?php endif; ?>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Subcategories', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_subcategories_field( $prefix, $current ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Buy button', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_buy_field( $prefix, $current ); ?></td>
+						</tr>
+					</table>
+				</div>
+				<div class="cwc-panel" id="cwc-panel-behavior" role="tabpanel" aria-labelledby="cwc-tab-behavior" data-cwc-panel="behavior">
+					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Slides', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_slides_field( $prefix, $current ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Gap (px)', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_gap_field( $prefix, $current ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Maximum items', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_count_field( $prefix, $current ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Autoplay', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_toggle_field( $prefix, $current, 'autoplay', __( 'Automatically advance to the next slide', 'cwc-carousel' ), __( 'Advances every timeout interval (1000–60000 ms).', 'cwc-carousel' ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Pause on hover', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_toggle_field( $prefix, $current, 'stop_on_hover', __( 'Stop autoplay while the pointer is over the carousel', 'cwc-carousel' ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Loop', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_toggle_field( $prefix, $current, 'loop', __( 'Restart from the first slide after the last one', 'cwc-carousel' ) ); ?></td>
+						</tr>
+					</table>
+				</div>
+				<div class="cwc-panel" id="cwc-panel-navigation" role="tabpanel" aria-labelledby="cwc-tab-navigation" data-cwc-panel="navigation">
+					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Controls', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_controls_field( $prefix, $current ); ?></td>
+						</tr>
+					</table>
+				</div>
+				<div class="cwc-panel" id="cwc-panel-style" role="tabpanel" aria-labelledby="cwc-tab-style" data-cwc-panel="style">
+					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Title alignment', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_title_align_field( $prefix, $current ); ?></td>
+						</tr>
+					</table>
+				</div>
 				<?php
 				submit_button();
 
@@ -810,6 +901,9 @@ class CWC_Admin {
 	/**
 	 * Renders the buy toggle and label text fields.
 	 *
+	 * The boolean half uses the shared toggle renderer (hidden `0` + visible
+	 * `1`, `.cwc-toggle`, AS-17); the buy_text input sits below it.
+	 *
 	 * @since 0.1.0
 	 *
 	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
@@ -817,25 +911,20 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_buy_field( string $prefix, array $current ) {
-		$output = '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[buy]" value="0" />'
-			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[buy]" value="1"'
-			. checked( ! empty( $current['buy'] ), true, false ) . ' /> '
-			. esc_html__( 'Show the Buy button on product cards', 'cwc-carousel' ) . '</label><br />'
-			. '<label>' . esc_html__( 'Buy text', 'cwc-carousel' ) . ' '
+		$this->render_toggle_field( $prefix, $current, 'buy', __( 'Show the Buy button on product cards', 'cwc-carousel' ) );
+		echo '<label>' . esc_html__( 'Buy text', 'cwc-carousel' ) . ' '
 			. '<input type="text" name="' . esc_attr( $prefix ) . '[buy_text]" value="' . esc_attr( $current['buy_text'] ) . '" />'
 			. '</label>';
-
-		// phpcs:ignore WordPress.Security.EscapeOutput -- checked() returns escaped HTML (core escaping function).
-		echo $output;
 	}
 
 	/**
-	 * Renders the arrows and pagination toggle checkboxes.
+	 * Renders the arrows and pagination toggle switches.
 	 *
 	 * Two independent boolean defaults ("Show arrows" / "Show pagination"),
-	 * each preceded by a hidden `value="0"` companion so an unchecked box posts
-	 * `'0'` (a native checkbox omits its key entirely when unchecked) and
-	 * sanitize_instance() round-trips `false` losslessly (AS-4, D6).
+	 * each rendered by the shared toggle renderer: a hidden `value="0"`
+	 * companion posts `'0'` when unchecked so sanitize_instance() round-trips
+	 * `false` losslessly (AS-4, D6), and the visible `1` checkbox doubles as
+	 * the switch (AS-17).
 	 *
 	 * @since 0.1.0
 	 *
@@ -844,29 +933,21 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_controls_field( string $prefix, array $current ) {
-		$output = '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[arrows]" value="0" />'
-			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[arrows]" value="1"'
-			. checked( ! empty( $current['arrows'] ), true, false ) . ' /> '
-			. esc_html__( 'Show arrows', 'cwc-carousel' ) . '</label><br />'
-			. '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[pagination]" value="0" />'
-			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[pagination]" value="1"'
-			. checked( ! empty( $current['pagination'] ), true, false ) . ' /> '
-			. esc_html__( 'Show pagination', 'cwc-carousel' ) . '</label>';
-
-		// phpcs:ignore WordPress.Security.EscapeOutput -- checked() returns escaped HTML (core escaping function).
-		echo $output;
+		$this->render_toggle_field( $prefix, $current, 'arrows', __( 'Show arrows', 'cwc-carousel' ) );
+		echo '<br />';
+		$this->render_toggle_field( $prefix, $current, 'pagination', __( 'Show pagination', 'cwc-carousel' ) );
 	}
 
 	/**
-	 * Renders the cover-mode checkbox (category carousels only).
+	 * Renders the cover-mode toggle switch (category carousels only).
 	 *
 	 * Only rendered for `type=category` carousels (CCC-1/AS-9): render_editor()
 	 * gates the row on `type === category` before calling this renderer, so the
-	 * method needs no second guard. A hidden `value="0"` companion posts '0'
-	 * when unchecked so sanitize_instance() round-trips `false` losslessly
-	 * (same pattern as the controls/buy fields, AS-4/D6). Product carousels
-	 * never see the field — `cover` is ignored for `type=product` at render
-	 * time.
+	 * method needs no second guard. The toggle posts a hidden `value="0"`
+	 * companion when unchecked so sanitize_instance() round-trips `false`
+	 * losslessly (AS-4/D6); the visible switch is the `1` checkbox (AS-17).
+	 * Product carousels never see the field — `cover` is ignored for
+	 * `type=product` at render time.
 	 *
 	 * @since 0.1.0
 	 *
@@ -875,22 +956,16 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_cover_field( string $prefix, array $current ) {
-		$output = '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[cover]" value="0" />'
-			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[cover]" value="1"'
-			. checked( ! empty( $current['cover'] ), true, false ) . ' /> '
-			. esc_html__( 'Show cover cards', 'cwc-carousel' ) . '</label>'
-			. '<p class="description">' . esc_html__( 'Render portrait cards with a full-bleed image and a centered overlay title.', 'cwc-carousel' ) . '</p>';
-
-		// phpcs:ignore WordPress.Security.EscapeOutput -- checked() returns escaped HTML (core escaping function).
-		echo $output;
+		$this->render_toggle_field( $prefix, $current, 'cover', __( 'Show cover cards', 'cwc-carousel' ), __( 'Render portrait cards with a full-bleed image and a centered overlay title.', 'cwc-carousel' ) );
 	}
 
 	/**
-	 * Renders the subcategories checkbox.
+	 * Renders the subcategories toggle switch.
 	 *
 	 * When checked, a `type=category` carousel lists the parent's direct child
-	 * terms instead of the explicit `categories` selection (CCC-5). A hidden
-	 * `value="0"` companion keeps the round-trip lossless (AS-4/D6).
+	 * terms instead of the explicit `categories` selection (CCC-5). The hidden
+	 * `value="0"` companion keeps the round-trip lossless (AS-4/D6); the
+	 * visible switch is the `1` checkbox (AS-17).
 	 *
 	 * @since 0.1.0
 	 *
@@ -899,14 +974,46 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_subcategories_field( string $prefix, array $current ) {
-		$output = '<label><input type="hidden" name="' . esc_attr( $prefix ) . '[subcategories]" value="0" />'
-			. '<input type="checkbox" name="' . esc_attr( $prefix ) . '[subcategories]" value="1"'
-			. checked( ! empty( $current['subcategories'] ), true, false ) . ' /> '
-			. esc_html__( 'Show subcategories', 'cwc-carousel' ) . '</label>'
-			. '<p class="description">' . esc_html__( 'List direct child categories instead of the selected categories.', 'cwc-carousel' ) . '</p>';
+		$this->render_toggle_field( $prefix, $current, 'subcategories', __( 'Show subcategories', 'cwc-carousel' ), __( 'List direct child categories instead of the selected categories.', 'cwc-carousel' ) );
+	}
 
-		// phpcs:ignore WordPress.Security.EscapeOutput -- checked() returns escaped HTML (core escaping function).
-		echo $output;
+	/**
+	 * Renders a Yes/No toggle switch for one boolean registry key.
+	 *
+	 * The native checkbox stays the real input (visually hidden but focusable)
+	 * so the form posts `0`/`1` under the registry key without any JS: a hidden
+	 * `value="0"` companion posts `'0'` when unchecked (a native checkbox omits
+	 * its key entirely), and the visible `1` checkbox posts `'1'` when checked.
+	 * sanitize_instance()/normalize() reuse parse_bool() on save, so the stored
+	 * boolean round-trips losslessly (AS-17). The `.cwc-toggle-switch` track is
+	 * pure decoration (green = on, red = off); admin.css draws it from the
+	 * `:checked` state, so no script is needed for the visual either. Used by
+	 * the re-skinned legacy booleans (buy / arrows / pagination / cover /
+	 * subcategories) and the three new autoplay-family keys (AS-17).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $prefix      Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current     Instance config to pre-fill.
+	 * @param string $key         Registry key being toggled (e.g. 'autoplay').
+	 * @param string $label       Visible label next to the switch.
+	 * @param string $description Optional helper text under the switch.
+	 * @return void
+	 */
+	public function render_toggle_field( string $prefix, array $current, string $key, string $label, string $description = '' ) {
+		$name = $prefix . '[' . $key . ']';
+
+		echo '<label class="cwc-toggle">'
+			. '<input type="hidden" name="' . esc_attr( $name ) . '" value="0" />'
+			. '<input type="checkbox" class="cwc-toggle-input" name="' . esc_attr( $name ) . '" value="1"'
+			. checked( ! empty( $current[ $key ] ), true, false ) . ' />'
+			. '<span class="cwc-toggle-switch" aria-hidden="true"></span>'
+			. '<span class="cwc-toggle-label">' . esc_html( $label ) . '</span>'
+			. '</label>';
+
+		if ( '' !== $description ) {
+			echo '<p class="description">' . esc_html( $description ) . '</p>';
+		}
 	}
 
 	/**
@@ -1238,11 +1345,12 @@ class CWC_Admin {
 	 * boolean, buy_text as text, type within {product, category}. Unknown or
 	 * invalid keys are normalized to their defaults, never resurrected from
 	 * the raw post (CM-2). The cover keys (`cover`, `subcategories`,
-	 * `title_align`) pass through raw: CWC_Settings::normalize() runs
+	 * `title_align`) and the 13-key extension (`autoplay` through
+	 * `slides_laptop`) pass through raw: CWC_Settings::normalize() runs
 	 * unconditionally downstream on both call sites (create_instance() and
-	 * sanitize_registry()) and owns their coercion — parse_bool for the two
-	 * booleans, the title_align enum for the alignment (D2/D5) — so this
-	 * method does not repeat it.
+	 * sanitize_registry()) and owns their coercion — parse_bool for the
+	 * booleans, the clamp ranges and the corner/hex whitelists (D1, D2/D5) —
+	 * so this method does not repeat them.
 	 *
 	 * @since 0.1.0
 	 *
@@ -1260,22 +1368,40 @@ class CWC_Admin {
 		$text       = isset( $input['buy_text'] ) ? $input['buy_text'] : $built['buy_text'];
 
 		return array(
-			'title'         => $this->clean_text( isset( $input['title'] ) ? $input['title'] : '', $built['title'] ),
-			'type'          => ( 'category' === $type ) ? 'category' : 'product',
-			'categories'    => $this->settings->sanitize_ids( isset( $input['categories'] ) ? $input['categories'] : array() ),
-			'products'      => $this->settings->sanitize_ids( isset( $input['products'] ) ? $input['products'] : array() ),
-			'slides'        => $this->bound( $input, 'slides', 1, 12, $built['slides'] ),
-			'slides_tablet' => $this->bound( $input, 'slides_tablet', 1, 12, $built['slides_tablet'] ),
-			'slides_mobile' => $this->bound( $input, 'slides_mobile', 1, 12, $built['slides_mobile'] ),
-			'gap'           => $this->bound( $input, 'gap', 8, 64, $built['gap'] ),
-			'count'         => $this->bound( $input, 'count', 0, PHP_INT_MAX, $built['count'] ),
-			'arrows'        => $this->settings->parse_bool( $arrows ),
-			'pagination'    => $this->settings->parse_bool( $pagination ),
-			'buy'           => $this->settings->parse_bool( $buy ),
-			'buy_text'      => $this->clean_text( $text, $built['buy_text'] ),
-			'cover'         => $input['cover'] ?? $built['cover'],
-			'subcategories' => $input['subcategories'] ?? $built['subcategories'],
-			'title_align'   => $input['title_align'] ?? $built['title_align'],
+			'title'                  => $this->clean_text( isset( $input['title'] ) ? $input['title'] : '', $built['title'] ),
+			'type'                   => ( 'category' === $type ) ? 'category' : 'product',
+			'categories'             => $this->settings->sanitize_ids( isset( $input['categories'] ) ? $input['categories'] : array() ),
+			'products'               => $this->settings->sanitize_ids( isset( $input['products'] ) ? $input['products'] : array() ),
+			'slides'                 => $this->bound( $input, 'slides', 1, 12, $built['slides'] ),
+			'slides_tablet'          => $this->bound( $input, 'slides_tablet', 1, 12, $built['slides_tablet'] ),
+			'slides_mobile'          => $this->bound( $input, 'slides_mobile', 1, 12, $built['slides_mobile'] ),
+			'gap'                    => $this->bound( $input, 'gap', 8, 64, $built['gap'] ),
+			'count'                  => $this->bound( $input, 'count', 0, PHP_INT_MAX, $built['count'] ),
+			'arrows'                 => $this->settings->parse_bool( $arrows ),
+			'pagination'             => $this->settings->parse_bool( $pagination ),
+			'buy'                    => $this->settings->parse_bool( $buy ),
+			'buy_text'               => $this->clean_text( $text, $built['buy_text'] ),
+			'cover'                  => $input['cover'] ?? $built['cover'],
+			'subcategories'          => $input['subcategories'] ?? $built['subcategories'],
+			'title_align'            => $input['title_align'] ?? $built['title_align'],
+			// 13-key extension (D1): raw pass-through in the cover-keys
+			// pattern — normalize() downstream owns every coercion (parse_bool,
+			// clamps, corner enum, hex whitelist), so the new keys never
+			// duplicate the shared ranges (4R WARNING debt stays untouched for
+			// the legacy bound() paths).
+			'autoplay'               => $input['autoplay'] ?? $built['autoplay'],
+			'stop_on_hover'          => $input['stop_on_hover'] ?? $built['stop_on_hover'],
+			'timeout'                => $input['timeout'] ?? $built['timeout'],
+			'speed'                  => $input['speed'] ?? $built['speed'],
+			'loop'                   => $input['loop'] ?? $built['loop'],
+			'nav_position'           => $input['nav_position'] ?? $built['nav_position'],
+			'nav_color_arrow'        => $input['nav_color_arrow'] ?? $built['nav_color_arrow'],
+			'nav_color_bg'           => $input['nav_color_bg'] ?? $built['nav_color_bg'],
+			'nav_color_border'       => $input['nav_color_border'] ?? $built['nav_color_border'],
+			'nav_color_arrow_hover'  => $input['nav_color_arrow_hover'] ?? $built['nav_color_arrow_hover'],
+			'nav_color_bg_hover'     => $input['nav_color_bg_hover'] ?? $built['nav_color_bg_hover'],
+			'nav_color_border_hover' => $input['nav_color_border_hover'] ?? $built['nav_color_border_hover'],
+			'slides_laptop'          => $input['slides_laptop'] ?? $built['slides_laptop'],
 		);
 	}
 
