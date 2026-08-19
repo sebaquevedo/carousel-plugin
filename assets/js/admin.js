@@ -1,28 +1,45 @@
 /**
- * Admin scripts: enhanced-search picker chips and inline per-chip uploader.
+ * Admin scripts: tabbed editor chrome, shortcode copy, and the enhanced-search
+ * picker chips with inline per-chip uploader.
  *
- * Two concerns, both scoped to the Carousel settings screen by CWC_Assets
+ * Three modules, all scoped to the Carousel settings screen by CWC_Assets
  * (FA-5):
  *
- * 1. Picker — each `.cwc-picker` wrapper (CWC_Admin) holds a multiple
- *    enhanced <select> (selectWoo AJAX search), the visible sortable
- *    `.cwc-chip-list`, and the empty-state CTA. This script takes over the
- *    selectWoo init from WooCommerce for both pickers: the category search
- *    (`.wc-category-search`, AS-11) and the product/variation search
+ * 1. Tabs — the four-panel editor (AS-16, D5) renders as nav-tab <button>s
+ *    plus one .cwc-panel per section, all inside the single form. The panels
+ *    start VISIBLE (no hidden attribute) so a JS-free browser sees every
+ *    field and the one nonce + submit still save (AS-16); this module hides
+ *    the inactive panels and wires the roving-tabindex tab behavior (role /
+ *    aria-selected / arrow keys).
+ *
+ * 2. Shortcode copy — the edit-mode header field (AS-17): clicking the
+ *    read-only input selects its text, the copy button writes it to the
+ *    clipboard (with a legacy execCommand fallback) and flashes its
+ *    "Copied!" label. The two labels travel as data-* attributes, so no new
+ *    localized strings are needed (D8).
+ *
+ * 3. Picker + inline media uploader — each `.cwc-picker` wrapper (CWC_Admin)
+ *    holds a multiple enhanced <select> (selectWoo AJAX search), the visible
+ *    sortable `.cwc-chip-list`, and the empty-state CTA. This script takes
+ *    over the selectWoo init from WooCommerce for both pickers: the category
+ *    search (`.wc-category-search`, AS-11) and the product/variation search
  *    (`.wc-product-search`, AS-12). The selects render with the `enhanced`
  *    marker so wc-enhanced-select.js skips them (WC 11.0's stock init neither
  *    forwards `show_empty` to the categories endpoint nor a stable value type
  *    without `data-return_id="id"`). The native option order is kept in sync
  *    with the chip order so the form POST serializes the visible order (D1,
  *    D3); the list rebuilds from `option:checked` on change (AS-11, AS-12).
+ *    In edit mode each chip carries a "Choose image" button driving a
+ *    wp.media frame (AS-3); on selection the hidden `cwc_cat_images[<term_id>]`
+ *    attachment-id input updates and the chip thumbnail preview refreshes. An
+ *    overlay-title text input posts `cwc_cat_titles[<term_id>]` (D5). Saving
+ *    happens through the settings form's admin_init handler as usual — this
+ *    script only mutates the DOM, it performs no AJAX (AS-3).
  *
- * 2. Inline media uploader — in edit mode each chip carries a "Choose
- *    image" button driving a wp.media frame (AS-3); on selection the hidden
- *    `cwc_cat_images[<term_id>]` attachment-id input updates and the chip
- *    thumbnail preview refreshes. An overlay-title text input posts
- *    `cwc_cat_titles[<term_id>]` (D5). Saving happens through the settings
- *    form's admin_init handler as usual — this script only mutates the DOM,
- *    it performs no AJAX (AS-3).
+ * The wp.media guard wraps ONLY the picker/uploader module: tabs and copy
+ * run regardless, so the new behavior never depends on the media library
+ * being primed (D8 module split — the old whole-script early return killed
+ * everything on any other admin screen reached by a race).
  *
  * All user-facing strings come from the `cwcCarouselAdmin` object that
  * wp_localize_script registers with this script — no hardcoded literals
@@ -43,19 +60,190 @@
 	// without the object.
 	var strings = window.cwcCarouselAdmin || {};
 
-	// wp.media is only present after wp_enqueue_media() has primed it; without
-	// it the uploader has nothing to open, so bail silently on other admin
-	// screens still reached by a race (defensive, FA-5).
-	if ( typeof window.wp === 'undefined' || typeof window.wp.media === 'undefined' ) {
-		return;
-	}
-
 	document.addEventListener(
 		'DOMContentLoaded',
 		function () {
-			initPickers();
+			initTabs();
+			initShortcodeCopy();
+
+			// wp.media is only present after wp_enqueue_media() has primed it;
+			// without it the uploader has nothing to open, so the picker/
+			// uploader module bails silently on screens where that race
+			// happens (defensive, FA-5). Tabs and copy above already ran.
+			if ( typeof window.wp !== 'undefined' && typeof window.wp.media !== 'undefined' ) {
+				initPickers();
+			}
 		}
 	);
+
+	/**
+	 * Wires the four-panel tabbed editor (AS-16, D5).
+	 *
+	 * The nav-tab <button>s and their `.cwc-panel` sections are both inside
+	 * the one settings form. The panels render WITHOUT the hidden attribute
+	 * (a JS-free browser sees every field and the single submit still saves —
+	 * AS-16); this function hides the inactive panels and drives the
+	 * roving-tabindex pattern: only the active tab is focusable, ArrowLeft /
+	 * ArrowRight activate the neighbour, and Enter/Space on a focused tab
+	 * also activates it (the native click would anyway). Clicking a tab
+	 * updates aria-selected on the tab and the hidden/visible state of the
+	 * panels.
+	 *
+	 * @return {void}
+	 */
+	function initTabs() {
+		var tablist = document.querySelector( '.cwc-tabs' );
+		var panels  = document.querySelectorAll( '.cwc-panel' );
+
+		if ( ! tablist || ! panels.length ) {
+			return;
+		}
+
+		var tabs = tablist.querySelectorAll( '[role="tab"]' );
+
+		function deactivate( tab ) {
+			tab.classList.remove( 'nav-tab-active' );
+			tab.setAttribute( 'aria-selected', 'false' );
+			tab.setAttribute( 'tabindex', '-1' );
+
+			var panel = document.getElementById( tab.getAttribute( 'aria-controls' ) );
+			if ( panel ) {
+				panel.hidden = true;
+			}
+		}
+
+		function activate( tab ) {
+			tab.classList.add( 'nav-tab-active' );
+			tab.setAttribute( 'aria-selected', 'true' );
+			tab.setAttribute( 'tabindex', '0' );
+			tab.focus();
+
+			var panel = document.getElementById( tab.getAttribute( 'aria-controls' ) );
+			if ( panel ) {
+				panel.hidden = false;
+			}
+		}
+
+		tabs.forEach( function ( tab ) {
+			tab.addEventListener(
+				'click',
+				function () {
+					tabs.forEach( deactivate );
+					activate( tab );
+				}
+			);
+
+			tab.addEventListener(
+				'keydown',
+				function ( event ) {
+					// ArrowLeft/ArrowRight rove between tabs (D5); Enter and
+					// Space fall through to the native click activation.
+					if ( event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' ) {
+						return;
+					}
+
+					event.preventDefault();
+
+					var index = Array.prototype.indexOf.call( tabs, tab );
+					var next  = 'ArrowRight' === event.key ? index + 1 : index - 1;
+
+					if ( next < 0 ) {
+						next = tabs.length - 1;
+					} else if ( next >= tabs.length ) {
+						next = 0;
+					}
+
+					tabs.forEach( deactivate );
+					activate( tabs[ next ] );
+				}
+			);
+		} );
+
+		// Initial state (AS-16): hide every panel except the active tab's, and
+		// keep the active tab's aria-selected in sync with its markup.
+		tabs.forEach( function ( tab ) {
+			if ( 'true' !== tab.getAttribute( 'aria-selected' ) ) {
+				deactivate( tab );
+			}
+		} );
+	}
+
+	/**
+	 * Wires the edit-mode shortcode copy header field (AS-17).
+	 *
+	 * The read-only input selects its text on click; the copy button reads the
+	 * input's value, writes it to the clipboard and swaps its label from
+	 * data-copy-label to data-copied-label for two seconds. A legacy
+	 * document.execCommand( 'copy' ) fallback keeps the button useful where
+	 * navigator.clipboard is unavailable (non-secure contexts, older
+	 * browsers) — the input is already focused by the preceding select().
+	 * The two labels live on the button as data-* attributes, so the PHP side
+	 * needs no new localized strings (D8).
+	 *
+	 * @return {void}
+	 */
+	function initShortcodeCopy() {
+		var buttons = document.querySelectorAll( '.cwc-shortcode-copy' );
+
+		if ( ! buttons.length ) {
+			return;
+		}
+
+		buttons.forEach( function ( button ) {
+			var input = document.getElementById( button.getAttribute( 'data-copy-target' ) );
+
+			if ( ! input ) {
+				return;
+			}
+
+			input.addEventListener(
+				'click',
+				function () {
+					input.select();
+				}
+			);
+
+			button.addEventListener(
+				'click',
+				function () {
+					input.select();
+					copyText( input.value, button );
+				}
+			);
+		} );
+	}
+
+	/**
+	 * Copies text to the clipboard, then flashes the button's copied label.
+	 *
+	 * @param {string}      text   The text to copy.
+	 * @param {HTMLElement} button The copy button (data-copy-label / data-copied-label).
+	 * @return {void}
+	 */
+	function copyText( text, button ) {
+		var copied = button.getAttribute( 'data-copied-label' );
+		var label  = button.getAttribute( 'data-copy-label' );
+
+		function restore() {
+			button.textContent = label;
+		}
+
+		function flash() {
+			button.textContent = copied;
+			window.setTimeout( restore, 2000 );
+		}
+
+		if ( navigator.clipboard && navigator.clipboard.writeText ) {
+			navigator.clipboard.writeText( text ).then( flash, flash );
+			return;
+		}
+
+		// Legacy fallback: the input was just selected by the click handler,
+		// so execCommand( 'copy' ) copies its value.
+		if ( document.execCommand( 'copy' ) ) {
+			flash();
+		}
+	}
 
 	/**
 	 * Wires picker behavior for every enhanced select on the screen.
