@@ -3,7 +3,8 @@
 ## Slice 1: Phase 1 — Settings Model, 13-Key Contract (PR 1) — COMPLETE
 
 - **Branch**: `feat/admin-ui-revamp-config` (base: tracker `feat/admin-ui-revamp`)
-- **PR**: #18 — https://github.com/sebaquevedo/carousel-plugin/pull/18
+- **PR**: #19 — https://github.com/sebaquevedo/carousel-plugin/pull/19
+- **Tracker PR**: not yet created — GitHub rejects a tracker PR with no commits vs `main`; create it once PR 1 merges into the tracker.
 - **Chain strategy**: feature-branch-chain (tracker `feat/admin-ui-revamp` aggregates to `main`; PR 1 targets the tracker; PRs 2–5 target the previous PR branch).
 - **Date**: 2026-08-19
 
