@@ -56,12 +56,12 @@ Chain base: main or previous PR branch (orchestrator resolves chain strategy wit
 
 ## Phase 4: New Field Renderers + i18n (PR 4)
 
-- [ ] 4.1 `render_device_slides_field`: slides/slides_laptop/slides_tablet/slides_mobile + device icons (AS-17)
-- [ ] 4.2 `render_nav_position_field` from `nav_positions()` (AS-17)
-- [ ] 4.3 `render_color_group_field`: 6 color+hex, hex posts (D4), "empty = theme default" (AS-17)
-- [ ] 4.4 `render_number_field` helper text for timeout/speed/count/gap (AS-17)
-- [ ] 4.5 admin.js color↔hex sync + icons; admin.css device/color/helper styles
-- [ ] 4.6 `languages/*`: extract new strings via `__()`, `tools/make-mo.php` recompile es_ES
+- [x] 4.1 `render_device_slides_field`: slides/slides_laptop/slides_tablet/slides_mobile + device icons (AS-17)
+- [x] 4.2 `render_nav_position_field` from `nav_positions()` (AS-17)
+- [x] 4.3 `render_color_group_field`: 6 color+hex, hex posts (D4), "empty = theme default" (AS-17)
+- [x] 4.4 `render_number_field` helper text for timeout/speed/count/gap (AS-17)
+- [x] 4.5 admin.js color↔hex sync + icons; admin.css device/color/helper styles
+- [x] 4.6 `languages/*`: extract new strings via `__()`, `tools/make-mo.php` recompile es_ES
 
 **Acceptance**: device picker saves 4 ramps; hex persists/empties stay `''`; rejected save preserves Behavior/Navigation values clamped (AS-18).
 
