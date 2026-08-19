@@ -88,10 +88,10 @@ Chain base: main or previous PR branch (orchestrator resolves chain strategy wit
 
 ## Phase 6: Final Verification
 
-- [ ] 6.1 php -l + phpcs (WordPress + WordPress-Extra) all files; `node --check` both JS
-- [ ] 6.2 E2E success shortcode: data-cwc-config â†’ buildOptions â†’ Swiper (browser)
-- [ ] 6.3 Final `tools/make-mo.php` recompile; es_ES no fallback strings
-- [ ] 6.4 Rollback sanity: revert 8 files â†’ legacy output unchanged (no migration)
+- [x] 6.1 php -l + phpcs (WordPress + WordPress-Extra) all files; `node --check` both JS
+- [x] 6.2 E2E success shortcode: data-cwc-config â†’ buildOptions â†’ Swiper (browser)
+- [x] 6.3 Final `tools/make-mo.php` recompile; es_ES no fallback strings
+- [x] 6.4 Rollback sanity: revert 8 files â†’ legacy output unchanged (no migration)
 
 ## Review Workload Forecast
 
