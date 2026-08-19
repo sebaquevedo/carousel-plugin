@@ -39,7 +39,7 @@ Chain base: main or previous PR branch (orchestrator resolves chain strategy wit
 
 ## Phase 2: Shortcode Whitelist (PR 2)
 
-- [ ] 2.1 `includes/class-shortcode.php`: `shortcode_atts` +13 × `''` (SC-12)
+- [x] 2.1 `includes/class-shortcode.php`: `shortcode_atts` +13 × `''` (SC-12)
 
 **Acceptance**: success shortcode resolves fully; omitted/empty atts fall through BC (SC-12).
 

@@ -1,4 +1,4 @@
-# Apply Progress — Admin UI Revamp (Slice 1 / PR 1)
+# Apply Progress — Admin UI Revamp (Slices 1–2 / PRs 1–2)
 
 ## Slice 1: Phase 1 — Settings Model, 13-Key Contract (PR 1) — COMPLETE
 
@@ -62,9 +62,60 @@ None — implementation matches design.md D1/D2/D3 intent and the CM-12/13/14 de
 
 - **PR 5 / CR-11 tension (WARNING)**: once `normalize()` returns 31 keys, the renderer's unconditional `wp_json_encode( $config )` (class-renderer.php:77) will emit the 13 new keys in `data-cwc-config` for EVERY instance — including legacy ones. The CR-11 scenario "output equals today's markup exactly" cannot hold for the config attribute text (CR-11 also mandates data-cwc-config carries the extended keys). frontend.js `buildOptions` ignores unknown keys, so there is NO behavioral change — but PR 5's acceptance wording "legacy markup byte-identical" should be read as "wrapper class/style + behavior identical; config attribute intentionally extended".
 
+## Slice 2: Phase 2 — Shortcode Whitelist (PR 2) — COMPLETE
+
+- **Branch**: `feat/admin-ui-revamp-shortcode` (base: `feat/admin-ui-revamp-config` per feature-branch-chain — PR 2 targets the PR 1 branch, NOT the tracker)
+- **PR**: #20 — https://github.com/sebaquevedo/carousel-plugin/pull/20
+- **Date**: 2026-08-19
+
+## Tasks completed (cumulative)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| 1.1 | `class-settings.php` `builtins()` +13: autoplay=false, stop_on_hover=true, timeout=3000, speed=300, loop=false, nav_position=`bottom-right`, 6 colors=`''`, slides_laptop=2 (CM-12) | [x] |
+| 1.2 | Add `nav_positions()` + `nav_color_keys()` (D2) | [x] |
+| 1.3 | `normalize()`: parse_bool x3; timeout clamp 1000–60000; speed 100–5000; slides_laptop 1–12; nav_position whitelist→bottom-right; hex empty-first (CM-13) | [x] |
+| 1.4 | `resolve()` `$known` +13 (CM-9) | [x] |
+| 2.1 | `class-shortcode.php` `shortcode_atts` +13 × `''` (SC-12) | [x] |
+
+## Slice 2 files changed
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `includes/class-shortcode.php` | Modified | `shortcode_atts()` default array +13 keys (`autoplay`, `stop_on_hover`, `timeout`, `speed`, `loop`, `nav_position`, 6 × `nav_color_*`, `slides_laptop`) all `''` (SC-12); render() docblock documents the extension; phpcbf re-aligned the array to the longest key column (`nav_color_border_hover`, repo standard). |
+| `openspec/changes/admin-ui-revamp/tasks.md` | Modified | Task 2.1 marked `[x]` |
+| `openspec/changes/admin-ui-revamp/apply-progress.md` | Modified | This merged continuity artifact |
+
+## Slice 2 commits (branch `feat/admin-ui-revamp-shortcode`)
+
+| Hash | Message |
+|------|---------|
+| `72dc04a` | feat(shortcode): whitelist 13 new config atts (SC-12) |
+| `504e61c` | docs(sdd): mark admin-ui-revamp Phase 2 task complete and record apply progress |
+
+## Slice 2 verification results (acceptance: SC-12)
+
+- `php -l includes/class-shortcode.php`: **no syntax errors**.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` (full repo): **clean** (exit 0, no output).
+- `wp eval-file` in wp-env (Docker, WP + WooCommerce 11.0.0 active): **52/52 PASS** against the SC-12 delta scenarios:
+  - Success-criteria shortcode (`autoplay="true" loop="true" speed="500" timeout="4000" stop_on_hover="false" slides_laptop="3" nav_position="top-left"`) renders a config carrying all 7 explicit values; `nav_color_arrow="#ff0000"` reaches resolve and sanitizes; CM-13 clamps still apply through the shortcode path (timeout 500→1000, slides_laptop 99→12, speed 0→100).
+  - BC: `[cwc_carousel]` with none of the 13 atts resolves exactly 31 keys; every new key equals its builtin and all 18 legacy keys equal the merge base (`instance_base('')` = legacy `cwc_carousel_options` — gap=64, buy_text='reservar ya' in this long-lived env, NOT raw builtins) — output unchanged for existing shortcodes.
+  - Empty-string atts (`autoplay="" loop=""`) fall through to builtins (treated as absent); unknown atts still dropped.
+- The temporary acceptance harness (`verify-pr2.php`) was deleted after the run — not committed.
+
+**Env discovery (affects later slices)**: this wp-env has a persisted legacy `cwc_carousel_options` option (gap=64, buy_text='reservar ya', slides=3 — leftovers from earlier panel-ux test runs). With no registry `default` entry, `instance_base('')` falls back to that legacy option. Later admin-save tests (PR 3/4) must account for this state or reset the option first.
+
+## Deviations from design
+
+None — implementation matches design.md section 3 and SC-12 exactly. The only addition beyond the 13-key array is the docblock sentence documenting the extension (same pattern PR 1 applied to its docblocks).
+
+## Observations for later slices
+
+- **PR 5 / CR-11 tension (carried forward from Slice 1)**: `data-cwc-config` now carries the 13 new keys for every instance — wrapper class/style and behavior stay byte-identical; the config attribute text is intentionally extended (frontend.js buildOptions ignores unknown keys, no behavioral change). PR 5's acceptance wording "legacy markup byte-identical" should be read as "wrapper class/style + behavior identical; config attribute intentionally extended".
+- The registry in this wp-env has NO `default` entry — the legacy global option is the effective base. If PR 3's tests create a registry `default`, the merge base will switch to it.
+
 ## Remaining phases
 
-- Phase 2 (PR 2): shortcode whitelist +13 atts — `class-shortcode.php` only, ~15 lines.
 - Phase 3 (PR 3): editor tabs + toggles + header field + re-fill + sanitize_instance raw + admin.js/css split.
 - Phase 4 (PR 4): new renderers + i18n.
 - Phase 5 (PR 5): renderer + frontend wiring + corner CSS.
