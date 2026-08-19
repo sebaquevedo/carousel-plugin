@@ -3,15 +3,16 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Custom Woo Pro Carousel 0.1.0\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/custom-woo-pro-carousel\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/carousel-plugin\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-08-19T14:10:52+00:00\n"
+"POT-Creation-Date: 2026-08-19T17:05:52+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: cwc-carousel\n"
 
 #. Plugin Name of the plugin
 #: custom-woo-pro-carousel.php
@@ -63,7 +64,7 @@ msgid "Slides (desktop / tablet / mobile)"
 msgstr ""
 
 #: includes/class-admin.php:256
-#: includes/class-admin.php:588
+#: includes/class-admin.php:592
 msgid "Controls"
 msgstr ""
 
@@ -85,13 +86,13 @@ msgstr ""
 
 #: includes/class-admin.php:297
 #: includes/class-admin.php:524
-#: includes/class-admin.php:690
+#: includes/class-admin.php:694
 msgid "Categories"
 msgstr ""
 
 #: includes/class-admin.php:297
-#: includes/class-admin.php:529
-#: includes/class-admin.php:689
+#: includes/class-admin.php:536
+#: includes/class-admin.php:693
 msgid "Products"
 msgstr ""
 
@@ -108,12 +109,12 @@ msgid "(reserved — not deletable or renamable)"
 msgstr ""
 
 #: includes/class-admin.php:306
-#: includes/class-admin.php:668
+#: includes/class-admin.php:672
 msgid "Delete"
 msgstr ""
 
 #: includes/class-admin.php:351
-#: includes/class-admin.php:643
+#: includes/class-admin.php:647
 msgid "The requested carousel was not found."
 msgstr ""
 
@@ -175,270 +176,278 @@ msgstr ""
 msgid "Carousel type"
 msgstr ""
 
-#: includes/class-admin.php:535
+#: includes/class-admin.php:540
 msgid "Cover mode"
 msgstr ""
 
-#: includes/class-admin.php:540
+#: includes/class-admin.php:544
 msgid "Subcategories"
 msgstr ""
 
-#: includes/class-admin.php:544
+#: includes/class-admin.php:548
 msgid "Buy button"
 msgstr ""
 
-#: includes/class-admin.php:552
+#: includes/class-admin.php:556
 msgid "Slides"
 msgstr ""
 
-#: includes/class-admin.php:556
+#: includes/class-admin.php:560
 msgid "Gap (px)"
 msgstr ""
 
-#: includes/class-admin.php:560
+#: includes/class-admin.php:564
 msgid "Maximum items"
 msgstr ""
 
-#: includes/class-admin.php:564
+#: includes/class-admin.php:568
 msgid "Autoplay"
 msgstr ""
 
-#: includes/class-admin.php:565
+#: includes/class-admin.php:569
 msgid "Automatically advance to the next slide"
 msgstr ""
 
-#: includes/class-admin.php:565
+#: includes/class-admin.php:569
 msgid "Advances every timeout interval (1000–60000 ms)."
 msgstr ""
 
-#: includes/class-admin.php:568
+#: includes/class-admin.php:572
 msgid "Pause on hover"
 msgstr ""
 
-#: includes/class-admin.php:569
+#: includes/class-admin.php:573
 msgid "Stop autoplay while the pointer is over the carousel"
 msgstr ""
 
-#: includes/class-admin.php:572
+#: includes/class-admin.php:576
 msgid "Autoplay timeout"
 msgstr ""
 
-#: includes/class-admin.php:573
+#: includes/class-admin.php:577
 msgid "Milliseconds each slide stays before autoplay advances (1000–60000)."
 msgstr ""
 
-#: includes/class-admin.php:576
+#: includes/class-admin.php:580
 msgid "Transition speed"
 msgstr ""
 
-#: includes/class-admin.php:577
+#: includes/class-admin.php:581
 msgid "Milliseconds the slide transition takes (100–5000)."
 msgstr ""
 
-#: includes/class-admin.php:580
+#: includes/class-admin.php:584
 msgid "Loop"
 msgstr ""
 
-#: includes/class-admin.php:581
+#: includes/class-admin.php:585
 msgid "Restart from the first slide after the last one"
 msgstr ""
 
-#: includes/class-admin.php:592
+#: includes/class-admin.php:596
 msgid "Navigation position"
 msgstr ""
 
-#: includes/class-admin.php:596
+#: includes/class-admin.php:600
 msgid "Navigation colors"
 msgstr ""
 
-#: includes/class-admin.php:604
+#: includes/class-admin.php:608
 msgid "Title alignment"
 msgstr ""
 
-#: includes/class-admin.php:652
+#: includes/class-admin.php:656
 msgid "Delete carousel"
 msgstr ""
 
 #. translators: %s: instance slug.
-#: includes/class-admin.php:657
+#: includes/class-admin.php:661
 #, php-format
 msgid "You are about to delete the \"%s\" carousel."
 msgstr ""
 
-#: includes/class-admin.php:662
+#: includes/class-admin.php:666
 msgid "Pages and shortcodes that reference this name will fall back to the reserved \"default\" carousel — they keep rendering and never fail."
 msgstr ""
 
-#: includes/class-admin.php:669
+#: includes/class-admin.php:673
 msgid "Cancel"
 msgstr ""
 
-#: includes/class-admin.php:692
+#: includes/class-admin.php:696
 msgid "Whether the carousel shows products or category cards (product_cat terms)."
 msgstr ""
 
-#: includes/class-admin.php:710
+#: includes/class-admin.php:714
 msgid "Display title shown above the carousel. Leave empty to hide it."
 msgstr ""
 
-#: includes/class-admin.php:746
+#: includes/class-admin.php:750
 msgid "Search categories…"
 msgstr ""
 
-#: includes/class-admin.php:791
+#: includes/class-admin.php:795
 msgid "Add categories"
 msgstr ""
 
-#: includes/class-admin.php:793
+#: includes/class-admin.php:797
 msgid "Search and select categories; drag the chips to set the carousel order."
 msgstr ""
 
-#: includes/class-admin.php:829
+#: includes/class-admin.php:833
 msgid "Search products…"
 msgstr ""
 
-#: includes/class-admin.php:864
+#: includes/class-admin.php:868
 msgid "Add products"
 msgstr ""
 
-#: includes/class-admin.php:866
+#: includes/class-admin.php:870
 msgid "Add products to show exactly these items in this order — the category filter above is ignored. Leave it empty to automatically show the latest products from the selected categories."
 msgstr ""
 
-#: includes/class-admin.php:887
+#: includes/class-admin.php:891
 msgid "Desktop"
 msgstr ""
 
-#: includes/class-admin.php:888
+#: includes/class-admin.php:892
 msgid "Laptop"
 msgstr ""
 
-#: includes/class-admin.php:889
+#: includes/class-admin.php:893
 msgid "Tablet"
 msgstr ""
 
-#: includes/class-admin.php:890
+#: includes/class-admin.php:894
 msgid "Mobile"
 msgstr ""
 
-#: includes/class-admin.php:905
-msgid "Slides shown per viewport (1–12), from desktop to mobile."
+#: includes/class-admin.php:909
+msgid "Screen sizes: Mobile < 768px, Tablet ≥ 768px, Laptop 992–1023px, Desktop ≥ 1024px."
 msgstr ""
 
-#: includes/class-admin.php:918
+#: includes/class-admin.php:922
 msgid "Space between slides in pixels (8–64)."
 msgstr ""
 
-#: includes/class-admin.php:931
+#: includes/class-admin.php:935
 msgid "0 renders an empty carousel."
 msgstr ""
 
-#: includes/class-admin.php:974
+#: includes/class-admin.php:978
 msgid "Show the Buy button on product cards"
 msgstr ""
 
-#: includes/class-admin.php:975
+#: includes/class-admin.php:979
 msgid "Buy text"
 msgstr ""
 
-#: includes/class-admin.php:996
+#: includes/class-admin.php:1000
 msgid "Show arrows"
 msgstr ""
 
-#: includes/class-admin.php:998
+#: includes/class-admin.php:1002
 msgid "Show pagination"
 msgstr ""
 
-#: includes/class-admin.php:1019
+#: includes/class-admin.php:1023
 msgid "Show cover cards"
 msgstr ""
 
-#: includes/class-admin.php:1019
+#: includes/class-admin.php:1023
 msgid "Render portrait cards with a full-bleed image and a centered overlay title."
 msgstr ""
 
-#: includes/class-admin.php:1037
+#: includes/class-admin.php:1041
 msgid "Show subcategories"
 msgstr ""
 
-#: includes/class-admin.php:1037
-msgid "List direct child categories instead of the selected categories."
+#: includes/class-admin.php:1041
+msgid "Lists child terms of the parent category and ignores the selected categories."
 msgstr ""
 
-#: includes/class-admin.php:1098
+#: includes/class-admin.php:1102
 msgid "Left"
 msgstr ""
 
-#: includes/class-admin.php:1099
+#: includes/class-admin.php:1103
 msgid "Center"
 msgstr ""
 
-#: includes/class-admin.php:1100
+#: includes/class-admin.php:1104
 msgid "Right"
 msgstr ""
 
-#: includes/class-admin.php:1131
+#: includes/class-admin.php:1136
 msgid "Bottom right"
 msgstr ""
 
-#: includes/class-admin.php:1132
+#: includes/class-admin.php:1137
 msgid "Bottom left"
 msgstr ""
 
-#: includes/class-admin.php:1133
+#: includes/class-admin.php:1138
 msgid "Top right"
 msgstr ""
 
-#: includes/class-admin.php:1134
+#: includes/class-admin.php:1139
 msgid "Top left"
 msgstr ""
 
-#: includes/class-admin.php:1144
+#: includes/class-admin.php:1140
+msgid "Sides (inside)"
+msgstr ""
+
+#: includes/class-admin.php:1141
+msgid "Sides (outside)"
+msgstr ""
+
+#: includes/class-admin.php:1151
 msgid "Where the navigation arrows sit inside the carousel."
 msgstr ""
 
-#: includes/class-admin.php:1166
+#: includes/class-admin.php:1173
 msgid "Arrow"
 msgstr ""
 
-#: includes/class-admin.php:1167
+#: includes/class-admin.php:1174
 msgid "Background"
 msgstr ""
 
-#: includes/class-admin.php:1168
+#: includes/class-admin.php:1175
 msgid "Border"
 msgstr ""
 
-#: includes/class-admin.php:1169
+#: includes/class-admin.php:1176
 msgid "Arrow on hover"
 msgstr ""
 
-#: includes/class-admin.php:1170
+#: includes/class-admin.php:1177
 msgid "Background on hover"
 msgstr ""
 
-#: includes/class-admin.php:1171
+#: includes/class-admin.php:1178
 msgid "Border on hover"
 msgstr ""
 
-#: includes/class-admin.php:1186
+#: includes/class-admin.php:1193
 msgid "Leave a color empty to use the theme default."
 msgstr ""
 
-#: includes/class-admin.php:1342
+#: includes/class-admin.php:1349
 msgid "The carousel name must contain at least one letter, number, or hyphen."
 msgstr ""
 
-#: includes/class-admin.php:1344
+#: includes/class-admin.php:1351
 msgid "\"default\" is a reserved name and cannot be used."
 msgstr ""
 
-#: includes/class-admin.php:1346
+#: includes/class-admin.php:1353
 msgid "A carousel with that name already exists."
 msgstr ""
 
 #. translators: %s: instance slug.
-#: includes/class-admin.php:1457
+#: includes/class-admin.php:1464
 #, php-format
 msgid "Cannot edit \"%s\": it does not exist in the registry."
 msgstr ""
