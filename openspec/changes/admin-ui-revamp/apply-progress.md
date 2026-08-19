@@ -91,7 +91,7 @@ None — implementation matches design.md D1/D2/D3 intent and the CM-12/13/14 de
 | Hash | Message |
 |------|---------|
 | `72dc04a` | feat(shortcode): whitelist 13 new config atts (SC-12) |
-| `504e61c` | docs(sdd): mark admin-ui-revamp Phase 2 task complete and record apply progress |
+| `43a34f5` | docs(sdd): mark admin-ui-revamp Phase 2 task complete and record apply progress |
 
 ## Slice 2 verification results (acceptance: SC-12)
 
