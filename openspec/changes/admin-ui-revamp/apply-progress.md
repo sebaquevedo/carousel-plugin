@@ -120,3 +120,40 @@ None — implementation matches design.md section 3 and SC-12 exactly. The only 
 - Phase 4 (PR 4): new renderers + i18n.
 - Phase 5 (PR 5): renderer + frontend wiring + corner CSS.
 - Phase 6: final verification.
+
+---
+
+## Slice 6 + Phase 6 (PR 6 / PR #24, branch `feat/admin-ui-revamp-sidenav`) — COMPLETE
+
+- **Date**: 2026-08-20
+- **Slices 3–6** were recorded in Engram (topic `sdd/admin-ui-revamp/apply-progress`, 6 revisions); this file caught up at the end. All phases 1–5b tasks (1.1–5b.7) are `[x]` in tasks.md; PRs #19–#24 are OPEN in the feature-branch-chain (tracker `feat/admin-ui-revamp` → config → shortcode → editor → fields → frontend → sidenav), none merged.
+- **Phase 6 (final verification) tasks 6.1–6.4 — COMPLETE**, committed as `ffcac39` docs(sdd) and pushed (PR #24 stays open).
+
+## Phase 6 verification results (all PASS)
+
+| Task | Evidence |
+|------|----------|
+| 6.1 Lint + standards | `php -l` 9/9 plugin PHP files clean; `node --check` admin.js + frontend.js clean; `vendor/bin/phpcs --standard=phpcs.xml.dist` (WordPress + WordPress-Extra) 11/11 files clean, 0 errors/warnings |
+| 6.2 E2E shortcode → config → Swiper | Live page http://localhost:8888/demo-carousels-2/ HTTP 200; both demo carousels carry 31-key `data-cwc-config`; `demo-productos` renders `.cwc-carousel-shell cwc-carousel--nav-sides-outside` with `[prev] [.swiper] [next]` flanking siblings + config on the inner slider; `demo-categorias` carries `cwc-carousel--cover cwc-carousel--nav-top-left` + only non-empty `--cwc-nav-color-*` vars; frontend.js + swiper bundle enqueued; admin.js/admin.css absent on frontend (FA-5). jsdom harness against the real vendored Swiper bundle: **40/40 PASS** — success-criteria config (autoplay/loop/speed/timeout/stop_on_hover/slides_laptop) reaches the real instance (`autoplay.delay=4000`, `pauseOnMouseEnter=false`, `speed=500`, `loop=true`, 992 tier=3, 768/1024 unchanged); legacy-resolved 31-key config emits no autoplay/loop keys and speed=300 (== Swiper default) with a 992 tier equal to the pre-change effective value → behavior identical; literal 18-key config keeps the exact 3-breakpoint ramp; sides-outside shell nav resolves via document-level fallback and prev/next clicks advance activeIndex |
+| 6.3 i18n | `tools/make-mo.php` recompiled in-container (`Success: Compiled …cwc-carousel-es_ES.mo`); fresh POT = 112 real msgids; es_ES PO has 112 entries — **0 missing, 0 empty, 0 fuzzy**; runtime probe 4/4: "Sides (inside)"→"Laterales (dentro)", "Sides (outside)"→"Laterales (fuera)", subcategories helper + device helper resolve under es_ES with no fallback |
+| 6.4 Rollback sanity | BC harness **26/26 PASS** (wp eval-file): legacy-shaped instance (11-key `cwc_carousel_options`, new keys absent) resolves with the 13 keys at builtins; wrapper open tag byte-identical vs the pre-change renderer (`CWC_Renderer_Old` extracted from `main`); full markup byte-identical once the config JSON is normalized; config diff is exactly the 13 new keys (18→31); no migration ran — legacy option (still 11 keys) and registry untouched by the render path; PB-4 only reads `cwc_carousel_options` (never writes), so reverting the branch leaves the legacy option untouched |
+
+## Phase 6 files changed
+
+| File | Action | What was done |
+|------|--------|---------------|
+| `openspec/changes/admin-ui-revamp/tasks.md` | Modified | Phase 6 tasks 6.1–6.4 marked `[x]` |
+| `openspec/changes/admin-ui-revamp/apply-progress.md` | Modified | This merged continuity artifact (slices 3–6 were recorded in Engram) |
+
+## Phase 6 commits (branch `feat/admin-ui-revamp-sidenav`)
+
+| Hash | Message |
+|------|---------|
+| `ffcac39` | docs(sdd): mark admin-ui-revamp Phase 6 verification tasks complete |
+
+## Phase 6 notes / risks
+
+- **Browser-only remainder (6.2)**: jsdom proved DOM wiring + real Swiper option mapping and nav click behavior; actual pixel layout of the side modes (CSS arrow positioning, flex shell geometry, hover colors) and real-window resize breakpoint re-evaluation remain browser-only — recommend a visual pass on PR #24 review.
+- **Known Swiper quirk (carried from PR #24)**: with `sides-outside` and MULTIPLE carousels on one page, the flanking buttons are outside `.swiper`, so `uniqueNavElements` falls back to the first document match and all carousels bind the same button pair. Single-carousel pages resolve correctly (proven); the multi-carousel page on /demo-carousels-2/ inherits the library behavior. Tracked as a risk in PR #24.
+- **Harness hygiene**: all Phase 6 scratch files (jsdom harness in `%TEMP%\opencode\cwc-p6`, i18n probe, BC harness + old-renderer copy under `tools/`) were created OUTSIDE the committed tree or deleted after the run; `phpcs` re-run clean afterwards. A stray `npm install` briefly added `jsdom` to `D:\code\package.json` (parent dir, outside the repo) — restored to its original state.
+- **Planning artifacts** (proposal.md, design.md, specs/) remain UNCOMMITTED — orchestrator to commit; not swept into child PR commits.
