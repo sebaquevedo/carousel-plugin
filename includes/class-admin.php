@@ -524,18 +524,22 @@ class CWC_Admin {
 							<th scope="row"><?php esc_html_e( 'Categories', 'cwc-carousel' ); ?></th>
 							<td><?php $this->render_categories_field( $prefix, $current, 'edit' === $mode ); ?></td>
 						</tr>
-						<?php if ( 'product' === $current['type'] ) : ?>
-						<tr>
+						<!-- Type-conditional rows (AS-17 PR 6 amendment): both rows
+							always render and carry data-cwc-type-row; the row that
+							does not match the SAVED type starts hidden, and
+							admin.js initTypeRows() toggles `hidden` as the type
+							select changes (D8 split — no wp.media dependency).
+							Hidden rows still POST their fields; the sanitizer
+							accepts both keys for either type, so switching the
+							type keeps the other side's values intact. -->
+						<tr data-cwc-type-row="product"<?php echo 'product' !== $current['type'] ? ' hidden' : ''; ?>>
 							<th scope="row"><?php esc_html_e( 'Products', 'cwc-carousel' ); ?></th>
 							<td><?php $this->render_products_field( $prefix, $current ); ?></td>
 						</tr>
-						<?php endif; ?>
-						<?php if ( 'category' === $current['type'] ) : ?>
-						<tr>
+						<tr data-cwc-type-row="category"<?php echo 'category' !== $current['type'] ? ' hidden' : ''; ?>>
 							<th scope="row"><?php esc_html_e( 'Cover mode', 'cwc-carousel' ); ?></th>
 							<td><?php $this->render_cover_field( $prefix, $current ); ?></td>
 						</tr>
-						<?php endif; ?>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Subcategories', 'cwc-carousel' ); ?></th>
 							<td><?php $this->render_subcategories_field( $prefix, $current ); ?></td>
@@ -685,7 +689,7 @@ class CWC_Admin {
 	public function render_type_field( string $prefix, array $current ) {
 		$selected = ( 'category' === $current['type'] ) ? 'category' : 'product';
 
-		echo '<select name="' . esc_attr( $prefix ) . '[type]">';
+		echo '<select name="' . esc_attr( $prefix ) . '[type]" data-cwc-type-select>';
 		echo '<option value="product"' . selected( $selected, 'product', false ) . '>' . esc_html__( 'Products', 'cwc-carousel' ) . '</option>';
 		echo '<option value="category"' . selected( $selected, 'category', false ) . '>' . esc_html__( 'Categories', 'cwc-carousel' ) . '</option>';
 		echo '</select>';
@@ -902,7 +906,7 @@ class CWC_Admin {
 
 		// phpcs:ignore WordPress.Security.EscapeOutput -- render_number() escapes every attribute; labels escaped above.
 		echo $output;
-		echo '<p class="description">' . esc_html__( 'Slides shown per viewport (1–12), from desktop to mobile.', 'cwc-carousel' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Screen sizes: Mobile < 768px, Tablet ≥ 768px, Laptop 992–1023px, Desktop ≥ 1024px.', 'cwc-carousel' ) . '</p>';
 	}
 
 	/**
@@ -1034,7 +1038,7 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_subcategories_field( string $prefix, array $current ) {
-		$this->render_toggle_field( $prefix, $current, 'subcategories', __( 'Show subcategories', 'cwc-carousel' ), __( 'List direct child categories instead of the selected categories.', 'cwc-carousel' ) );
+		$this->render_toggle_field( $prefix, $current, 'subcategories', __( 'Show subcategories', 'cwc-carousel' ), __( 'Lists child terms of the parent category and ignores the selected categories.', 'cwc-carousel' ) );
 	}
 
 	/**
@@ -1110,13 +1114,14 @@ class CWC_Admin {
 	}
 
 	/**
-	 * Renders the navigation-position corner select (AS-17).
+	 * Renders the navigation-position select (AS-17, PR 6 amendment).
 	 *
 	 * The options are built from the shared CWC_Settings::nav_positions()
 	 * enum (D2), so the select can never drift from the settings model's
-	 * whitelist: any value outside the four corners sanitizes back to
+	 * whitelist: any value outside the six positions sanitizes back to
 	 * `bottom-right` on save (CM-13), and the re-render selects it too
-	 * (title_alignments() pattern).
+	 * (title_alignments() pattern). The two side modes added in PR 6 label
+	 * themselves "Sides (inside)" / "Sides (outside)" (CR-11 amendment).
 	 *
 	 * @since 0.1.0
 	 *
@@ -1128,10 +1133,12 @@ class CWC_Admin {
 		$selected = $this->settings->sanitize_nav_position( $current['nav_position'] );
 
 		$labels = array(
-			'bottom-right' => __( 'Bottom right', 'cwc-carousel' ),
-			'bottom-left'  => __( 'Bottom left', 'cwc-carousel' ),
-			'top-right'    => __( 'Top right', 'cwc-carousel' ),
-			'top-left'     => __( 'Top left', 'cwc-carousel' ),
+			'bottom-right'  => __( 'Bottom right', 'cwc-carousel' ),
+			'bottom-left'   => __( 'Bottom left', 'cwc-carousel' ),
+			'top-right'     => __( 'Top right', 'cwc-carousel' ),
+			'top-left'      => __( 'Top left', 'cwc-carousel' ),
+			'sides-inside'  => __( 'Sides (inside)', 'cwc-carousel' ),
+			'sides-outside' => __( 'Sides (outside)', 'cwc-carousel' ),
 		);
 
 		echo '<select name="' . esc_attr( $prefix ) . '[nav_position]">';
