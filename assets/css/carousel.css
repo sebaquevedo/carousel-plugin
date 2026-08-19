@@ -193,9 +193,86 @@
 	text-align: center;
 }
 
+/**
+ * Nav-arrow positioning and theming (CR-11, FA-9).
+ *
+ * Bottom-right is the DEFAULT corner: it targets the unclassed container (D6),
+ * so legacy markup keeps its class-less wrapper. The three modifier classes
+ * restyle the same buttons for the other corners. Color tokens wire through
+ * the --cwc-nav-color-* variables the renderer emits per non-empty key
+ * (CR-11), with fallbacks to the theme tokens (FA-3): the arrow glyph keeps
+ * the accent color and the background/border stay transparent when unset, so
+ * today's look survives for legacy carousels.
+ */
 .cwc-carousel .swiper-button-prev,
 .cwc-carousel .swiper-button-next {
-	color: var( --cwc-color-accent );
+	box-sizing: border-box;
+	top: auto;
+	bottom: 16px;
+	margin-top: 0;
+	width: 40px;
+	height: 40px;
+	background-color: var( --cwc-nav-color-bg, transparent );
+	border: 1px solid var( --cwc-nav-color-border, transparent );
+	border-radius: var( --cwc-border-radius );
+	color: var( --cwc-nav-color-arrow, var( --cwc-color-accent ) );
+}
+
+.cwc-carousel .swiper-button-prev {
+	left: auto;
+	right: 64px;
+}
+
+.cwc-carousel .swiper-button-next {
+	right: 16px;
+}
+
+.cwc-carousel .swiper-button-prev:hover,
+.cwc-carousel .swiper-button-next:hover {
+	background-color: var( --cwc-nav-color-bg-hover, var( --cwc-nav-color-bg, transparent ) );
+	border-color: var( --cwc-nav-color-border-hover, var( --cwc-nav-color-border, transparent ) );
+	color: var( --cwc-nav-color-arrow-hover, var( --cwc-nav-color-arrow, var( --cwc-color-accent ) ) );
+}
+
+.cwc-carousel--nav-bottom-left .swiper-button-prev {
+	left: 16px;
+	right: auto;
+}
+
+.cwc-carousel--nav-bottom-left .swiper-button-next {
+	left: 64px;
+	right: auto;
+}
+
+.cwc-carousel--nav-top-right .swiper-button-prev,
+.cwc-carousel--nav-top-right .swiper-button-next {
+	top: 16px;
+	bottom: auto;
+}
+
+.cwc-carousel--nav-top-right .swiper-button-prev {
+	left: auto;
+	right: 64px;
+}
+
+.cwc-carousel--nav-top-right .swiper-button-next {
+	right: 16px;
+}
+
+.cwc-carousel--nav-top-left .swiper-button-prev,
+.cwc-carousel--nav-top-left .swiper-button-next {
+	top: 16px;
+	bottom: auto;
+}
+
+.cwc-carousel--nav-top-left .swiper-button-prev {
+	left: 16px;
+	right: auto;
+}
+
+.cwc-carousel--nav-top-left .swiper-button-next {
+	left: 64px;
+	right: auto;
 }
 
 .cwc-carousel .swiper-pagination-bullet-active {
