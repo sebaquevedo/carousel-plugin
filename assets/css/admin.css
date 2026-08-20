@@ -265,3 +265,58 @@
 	width: auto;
 	font-family: Consolas, Monaco, monospace;
 }
+
+/* --- Device slides picker (AS-17) ------------------------------------- */
+
+/* One row per breakpoint: core dashicon + label + number input, inline.
+   The dashicon and input align on a shared baseline inside the label. */
+.cwc-device-field {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin: 2px 0;
+}
+
+.cwc-device-field .dashicons {
+	width: 20px;
+	height: 20px;
+	font-size: 20px;
+	color: #50575e;
+}
+
+/* Fixed label width keeps the four number inputs on a vertical rhythm. */
+.cwc-device-field .cwc-device-label {
+	min-width: 64px;
+}
+
+.cwc-device-field input[type="number"] {
+	width: 90px;
+}
+
+/* --- Navigation color rows (AS-17, D4) -------------------------------- */
+
+/* One row per nav-color key: label + color picker + hex input. The picker
+   carries no `name` and is purely decorative (D4); the hex input posts. */
+.cwc-color-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 4px 0;
+}
+
+.cwc-color-row label {
+	min-width: 150px;
+}
+
+.cwc-color-row input[type="color"] {
+	width: 40px;
+	height: 30px;
+	padding: 1px;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+.cwc-color-row .cwc-color-hex {
+	width: 90px;
+	font-family: Consolas, Monaco, monospace;
+}

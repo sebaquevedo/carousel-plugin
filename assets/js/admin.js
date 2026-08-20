@@ -18,7 +18,14 @@
  *    "Copied!" label. The two labels travel as data-* attributes, so no new
  *    localized strings are needed (D8).
  *
- * 3. Picker + inline media uploader — each `.cwc-picker` wrapper (CWC_Admin)
+ * 3. Color sync — the six navigation-color rows (AS-17, D4): an
+ *    input[type=color] picker next to a hex text input. The hex input is the
+ *    posting field; the picker carries no `name`, so it can never post the
+ *    #000000 value browsers coerce from an empty color (D4). This module
+ *    keeps the two in sync both ways — picking writes the hex, typing a
+ *    valid 6-digit hex moves the picker.
+ *
+ * 4. Picker + inline media uploader — each `.cwc-picker` wrapper (CWC_Admin)
  *    holds a multiple enhanced <select> (selectWoo AJAX search), the visible
  *    sortable `.cwc-chip-list`, and the empty-state CTA. This script takes
  *    over the selectWoo init from WooCommerce for both pickers: the category
@@ -65,11 +72,13 @@
 		function () {
 			initTabs();
 			initShortcodeCopy();
+			initColorSync();
 
 			// wp.media is only present after wp_enqueue_media() has primed it;
 			// without it the uploader has nothing to open, so the picker/
 			// uploader module bails silently on screens where that race
-			// happens (defensive, FA-5). Tabs and copy above already ran.
+			// happens (defensive, FA-5). Tabs, copy and color sync above
+			// already ran.
 			if ( typeof window.wp !== 'undefined' && typeof window.wp.media !== 'undefined' ) {
 				initPickers();
 			}
@@ -243,6 +252,51 @@
 		if ( document.execCommand( 'copy' ) ) {
 			flash();
 		}
+	}
+
+	/**
+	 * Wires the navigation-color pickers to their hex inputs (AS-17, D4).
+	 *
+	 * Each color row renders an input[type=color] picker plus a hex text
+	 * input that IS the posting field: the picker carries no `name`, because
+	 * browsers coerce an empty color value to #000000 on submit and would
+	 * store a black arrow for every unset key (D4). Picking a color writes
+	 * its #rrggbb value into the hex input; typing a valid 6-digit hex in
+	 * the text input moves the picker. An empty hex input posts '' and
+	 * normalize() keeps it empty (theme default, CM-13), so the picker's own
+	 * value never matters for storage. Runs unconditionally — this module
+	 * needs no wp.media (D8 module split).
+	 *
+	 * @return {void}
+	 */
+	function initColorSync() {
+		var pickers = document.querySelectorAll( '.cwc-color-picker' );
+
+		pickers.forEach( function ( picker ) {
+			var hex = document.getElementById( picker.getAttribute( 'data-cwc-hex' ) );
+
+			if ( ! hex ) {
+				return;
+			}
+
+			picker.addEventListener(
+				'input',
+				function () {
+					hex.value = picker.value;
+				}
+			);
+
+			hex.addEventListener(
+				'input',
+				function () {
+					var value = hex.value.trim();
+
+					if ( /^#[0-9a-f]{6}$/i.test( value ) ) {
+						picker.value = value;
+					}
+				}
+			);
+		} );
 	}
 
 	/**

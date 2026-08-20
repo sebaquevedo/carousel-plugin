@@ -550,7 +550,7 @@ class CWC_Admin {
 					<table class="form-table" role="presentation">
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Slides', 'cwc-carousel' ); ?></th>
-							<td><?php $this->render_slides_field( $prefix, $current ); ?></td>
+							<td><?php $this->render_device_slides_field( $prefix, $current ); ?></td>
 						</tr>
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Gap (px)', 'cwc-carousel' ); ?></th>
@@ -569,6 +569,14 @@ class CWC_Admin {
 							<td><?php $this->render_toggle_field( $prefix, $current, 'stop_on_hover', __( 'Stop autoplay while the pointer is over the carousel', 'cwc-carousel' ) ); ?></td>
 						</tr>
 						<tr>
+							<th scope="row"><?php esc_html_e( 'Autoplay timeout', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_number_field( $prefix, $current, 'timeout', 1000, 60000, __( 'Milliseconds each slide stays before autoplay advances (1000–60000).', 'cwc-carousel' ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Transition speed', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_number_field( $prefix, $current, 'speed', 100, 5000, __( 'Milliseconds the slide transition takes (100–5000).', 'cwc-carousel' ) ); ?></td>
+						</tr>
+						<tr>
 							<th scope="row"><?php esc_html_e( 'Loop', 'cwc-carousel' ); ?></th>
 							<td><?php $this->render_toggle_field( $prefix, $current, 'loop', __( 'Restart from the first slide after the last one', 'cwc-carousel' ) ); ?></td>
 						</tr>
@@ -579,6 +587,14 @@ class CWC_Admin {
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Controls', 'cwc-carousel' ); ?></th>
 							<td><?php $this->render_controls_field( $prefix, $current ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Navigation position', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_nav_position_field( $prefix, $current ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Navigation colors', 'cwc-carousel' ); ?></th>
+							<td><?php $this->render_color_group_field( $prefix, $current ); ?></td>
 						</tr>
 					</table>
 				</div>
@@ -851,7 +867,14 @@ class CWC_Admin {
 	}
 
 	/**
-	 * Renders the desktop/tablet/mobile slides number fields (1-12).
+	 * Renders the per-device slides picker for the four breakpoints (AS-17).
+	 *
+	 * Four number inputs binding `slides` / `slides_laptop` / `slides_tablet`
+	 * / `slides_mobile`, each with a device icon (core dashicons — no icon
+	 * font or build step) and its label. The laptop ramp is the 13-key
+	 * extension's field (CM-12); the other three are the legacy desktop /
+	 * tablet / mobile ramps. All four clamp 1–12 via normalize() on save
+	 * (CM-13) and via the create re-fill bounds (AS-18).
 	 *
 	 * @since 0.1.0
 	 *
@@ -859,20 +882,31 @@ class CWC_Admin {
 	 * @param array  $current Instance config to pre-fill.
 	 * @return void
 	 */
-	public function render_slides_field( string $prefix, array $current ) {
-		$output = esc_html__( 'Desktop', 'cwc-carousel' ) . ' '
-			. $this->render_number( $prefix . '[slides]', $current['slides'], 1, 12 ) . '<br />'
-			. esc_html__( 'Tablet', 'cwc-carousel' ) . ' '
-			. $this->render_number( $prefix . '[slides_tablet]', $current['slides_tablet'], 1, 12 ) . '<br />'
-			. esc_html__( 'Mobile', 'cwc-carousel' ) . ' '
-			. $this->render_number( $prefix . '[slides_mobile]', $current['slides_mobile'], 1, 12 );
+	public function render_device_slides_field( string $prefix, array $current ) {
+		$devices = array(
+			'slides'        => array( 'desktop', __( 'Desktop', 'cwc-carousel' ) ),
+			'slides_laptop' => array( 'laptop', __( 'Laptop', 'cwc-carousel' ) ),
+			'slides_tablet' => array( 'tablet', __( 'Tablet', 'cwc-carousel' ) ),
+			'slides_mobile' => array( 'smartphone', __( 'Mobile', 'cwc-carousel' ) ),
+		);
+
+		$output = '';
+
+		foreach ( $devices as $device_key => $device ) {
+			$output .= '<label class="cwc-device-field">'
+				. '<span class="dashicons dashicons-' . esc_attr( $device[0] ) . '" aria-hidden="true"></span>'
+				. '<span class="cwc-device-label">' . esc_html( $device[1] ) . '</span>'
+				. $this->render_number( $prefix . '[' . $device_key . ']', $current[ $device_key ], 1, 12 )
+				. '</label><br />';
+		}
 
 		// phpcs:ignore WordPress.Security.EscapeOutput -- render_number() escapes every attribute; labels escaped above.
 		echo $output;
+		echo '<p class="description">' . esc_html__( 'Slides shown per viewport (1–12), from desktop to mobile.', 'cwc-carousel' ) . '</p>';
 	}
 
 	/**
-	 * Renders the gap field (8-64 px).
+	 * Renders the gap field (8-64 px) with its helper text (AS-17).
 	 *
 	 * @since 0.1.0
 	 *
@@ -881,11 +915,11 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_gap_field( string $prefix, array $current ) {
-		echo $this->render_number( $prefix . '[gap]', $current['gap'], 8, 64 ); // phpcs:ignore WordPress.Security.EscapeOutput -- render_number() returns escaped HTML.
+		$this->render_number_field( $prefix, $current, 'gap', 8, 64, __( 'Space between slides in pixels (8–64).', 'cwc-carousel' ) );
 	}
 
 	/**
-	 * Renders the count field (0+).
+	 * Renders the count field (0+) with its helper text (AS-17).
 	 *
 	 * @since 0.1.0
 	 *
@@ -894,8 +928,34 @@ class CWC_Admin {
 	 * @return void
 	 */
 	public function render_count_field( string $prefix, array $current ) {
-		echo $this->render_number( $prefix . '[count]', $current['count'], 0, PHP_INT_MAX ); // phpcs:ignore WordPress.Security.EscapeOutput -- render_number() returns escaped HTML.
-		echo '<p class="description">' . esc_html__( '0 renders an empty carousel.', 'cwc-carousel' ) . '</p>';
+		$this->render_number_field( $prefix, $current, 'count', 0, PHP_INT_MAX, __( '0 renders an empty carousel.', 'cwc-carousel' ) );
+	}
+
+	/**
+	 * Renders a bounded number input with optional helper text (AS-17).
+	 *
+	 * Every number field carries a helper under the input — the slides ramps
+	 * get one group helper, and gap / count / timeout / speed get their own —
+	 * so the range a save clamps to (CM-13) is visible before submitting. The
+	 * bounds mirror normalize()'s clamps where they exist (timeout 1000–60000,
+	 * speed 100–5000) and the legacy bound() ranges elsewhere.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $prefix      Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current     Instance config to pre-fill.
+	 * @param string $key         Registry key being edited (e.g. 'timeout').
+	 * @param int    $min         Inclusive minimum.
+	 * @param int    $max         Inclusive maximum.
+	 * @param string $description Optional helper text under the input.
+	 * @return void
+	 */
+	public function render_number_field( string $prefix, array $current, string $key, int $min, int $max, string $description = '' ) {
+		echo $this->render_number( $prefix . '[' . $key . ']', (int) $current[ $key ], $min, $max ); // phpcs:ignore WordPress.Security.EscapeOutput -- render_number() returns escaped HTML.
+
+		if ( '' !== $description ) {
+			echo '<p class="description">' . esc_html( $description ) . '</p>';
+		}
 	}
 
 	/**
@@ -1047,6 +1107,83 @@ class CWC_Admin {
 		}
 
 		echo '</select>';
+	}
+
+	/**
+	 * Renders the navigation-position corner select (AS-17).
+	 *
+	 * The options are built from the shared CWC_Settings::nav_positions()
+	 * enum (D2), so the select can never drift from the settings model's
+	 * whitelist: any value outside the four corners sanitizes back to
+	 * `bottom-right` on save (CM-13), and the re-render selects it too
+	 * (title_alignments() pattern).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
+	 * @return void
+	 */
+	public function render_nav_position_field( string $prefix, array $current ) {
+		$selected = $this->settings->sanitize_nav_position( $current['nav_position'] );
+
+		$labels = array(
+			'bottom-right' => __( 'Bottom right', 'cwc-carousel' ),
+			'bottom-left'  => __( 'Bottom left', 'cwc-carousel' ),
+			'top-right'    => __( 'Top right', 'cwc-carousel' ),
+			'top-left'     => __( 'Top left', 'cwc-carousel' ),
+		);
+
+		echo '<select name="' . esc_attr( $prefix ) . '[nav_position]">';
+
+		foreach ( $this->settings->nav_positions() as $position ) {
+			echo '<option value="' . esc_attr( $position ) . '"' . selected( $selected, $position, false ) . '>' . esc_html( $labels[ $position ] ) . '</option>';
+		}
+
+		echo '</select>';
+		echo '<p class="description">' . esc_html__( 'Where the navigation arrows sit inside the carousel.', 'cwc-carousel' ) . '</p>';
+	}
+
+	/**
+	 * Renders the six navigation-color rows (AS-17).
+	 *
+	 * One row per nav_color_* key from the shared CWC_Settings::nav_color_keys()
+	 * list (D2): a label, an input[type=color] picker and a hex text input.
+	 * The hex text input is the POSTING field (D4) — the color picker carries
+	 * NO `name` attribute, because browsers coerce an empty color value to
+	 * #000000 on submit and would store a black arrow for every unset key.
+	 * An empty hex value posts '' and normalize() keeps it empty (theme
+	 * default, CM-13); admin.js keeps the two inputs in sync (D4, D8).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $prefix  Field name prefix (`cwc_carousel_registry[slug]`).
+	 * @param array  $current Instance config to pre-fill.
+	 * @return void
+	 */
+	public function render_color_group_field( string $prefix, array $current ) {
+		$labels = array(
+			'nav_color_arrow'        => __( 'Arrow', 'cwc-carousel' ),
+			'nav_color_bg'           => __( 'Background', 'cwc-carousel' ),
+			'nav_color_border'       => __( 'Border', 'cwc-carousel' ),
+			'nav_color_arrow_hover'  => __( 'Arrow on hover', 'cwc-carousel' ),
+			'nav_color_bg_hover'     => __( 'Background on hover', 'cwc-carousel' ),
+			'nav_color_border_hover' => __( 'Border on hover', 'cwc-carousel' ),
+		);
+
+		foreach ( $this->settings->nav_color_keys() as $color_key ) {
+			$hex       = (string) $current[ $color_key ];
+			$picker_id = 'cwc-color-' . $color_key;
+			$hex_id    = 'cwc-color-hex-' . $color_key;
+
+			echo '<p class="cwc-color-row">'
+				. '<label for="' . esc_attr( $hex_id ) . '">' . esc_html( $labels[ $color_key ] ) . '</label> '
+				. '<input type="color" class="cwc-color-picker" id="' . esc_attr( $picker_id ) . '" value="' . esc_attr( '' === $hex ? '#000000' : $hex ) . '" data-cwc-hex="' . esc_attr( $hex_id ) . '" /> '
+				. '<input type="text" class="cwc-color-hex" id="' . esc_attr( $hex_id ) . '" name="' . esc_attr( $prefix ) . '[' . esc_attr( $color_key ) . ']" value="' . esc_attr( $hex ) . '" maxlength="7" />'
+				. '</p>';
+		}
+
+		echo '<p class="description">' . esc_html__( 'Leave a color empty to use the theme default.', 'cwc-carousel' ) . '</p>';
 	}
 
 	/**
