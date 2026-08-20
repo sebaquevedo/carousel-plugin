@@ -45,12 +45,12 @@ Chain base: main or previous PR branch (orchestrator resolves chain strategy wit
 
 ## Phase 3: Editor Structure — Tabs, Toggles, Header (PR 3)
 
-- [ ] 3.1 `render_editor`: 4 nav-tab panels (Content/Behavior/Navigation/Style) over ONE form+submit; conditional type rows stay in Content (AS-16)
-- [ ] 3.2 `render_toggle_field` (hidden 0 + visible 1, `.cwc-toggle`) replaces inline checkboxes buy/arrows/pagination/cover/subcategories + new bools (AS-17)
-- [ ] 3.3 Header shortcode field `[cwc_carousel name="{slug}"]` read-only + copy button (AS-17)
-- [ ] 3.4 Rejected-create re-fill: append `normalize( $current )` after bounds loop (D3, AS-18)
-- [ ] 3.5 `sanitize_instance` raw pass-through of 13 keys (D1)
-- [ ] 3.6 admin.js module split (D8): tabs (roles/roving tabindex) + copy run without wp.media; admin.css tab/toggle/header styles
+- [x] 3.1 `render_editor`: 4 nav-tab panels (Content/Behavior/Navigation/Style) over ONE form+submit; conditional type rows stay in Content (AS-16)
+- [x] 3.2 `render_toggle_field` (hidden 0 + visible 1, `.cwc-toggle`) replaces inline checkboxes buy/arrows/pagination/cover/subcategories + new bools (AS-17)
+- [x] 3.3 Header shortcode field `[cwc_carousel name="{slug}"]` read-only + copy button (AS-17)
+- [x] 3.4 Rejected-create re-fill: append `normalize( $current )` after bounds loop (D3, AS-18)
+- [x] 3.5 `sanitize_instance` raw pass-through of 13 keys (D1)
+- [x] 3.6 admin.js module split (D8): tabs (roles/roving tabindex) + copy run without wp.media; admin.css tab/toggle/header styles
 
 **Acceptance**: curl JS-free POST saves all panels under one nonce; toggles 0/1 round-trip; php -l + phpcs + `node --check`.
 
