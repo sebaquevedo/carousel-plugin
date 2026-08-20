@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * option (autoload off, CM-7) and `resolve()` selects the named instance — or
  * the reserved `default`, never fatal (CM-8) — as the merge base. The
  * registry is read-only here: the admin writes it (AS-5) and the bootstrap
- * seeds it once (PB-4). Every resolved instance exposes exactly the 18-key
+ * seeds it once (PB-4). Every resolved instance exposes exactly the 31-key
  * contract via `normalize()` (CM-9).
  *
  * @since 0.1.0
@@ -77,7 +77,7 @@ class CWC_Settings {
 	public function resolve( array $atts ): array {
 		// The `name` attribute selects the instance whose config becomes the
 		// merge base. It is consumed before the empty-string filter so it can
-		// never participate in attribute layering or leak into the 18-key
+		// never participate in attribute layering or leak into the 31-key
 		// contract (SC-8, CM-9). An absent/empty name resolves the reserved
 		// `default` instance — today's behavior (CM-8).
 		$name = isset( $atts['name'] ) ? (string) $atts['name'] : '';
@@ -104,24 +104,40 @@ class CWC_Settings {
 		);
 
 		$known = array(
-			'type'          => $base['type'],
-			'title'         => $base['title'],
-			'category'      => $base['category'],
-			'categories'    => $base['categories'],
-			'mix'           => $base['mix'],
-			'count'         => $base['count'],
-			'slides'        => $base['slides'],
-			'slides_tablet' => $base['slides_tablet'],
-			'slides_mobile' => $base['slides_mobile'],
-			'gap'           => $base['gap'],
-			'arrows'        => $base['arrows'],
-			'pagination'    => $base['pagination'],
-			'buy'           => $base['buy'],
-			'buy_text'      => $base['buy_text'],
-			'cover'         => $base['cover'],
-			'subcategories' => $base['subcategories'],
-			'title_align'   => $base['title_align'],
-			'products'      => $base['products'],
+			'type'                   => $base['type'],
+			'title'                  => $base['title'],
+			'category'               => $base['category'],
+			'categories'             => $base['categories'],
+			'mix'                    => $base['mix'],
+			'count'                  => $base['count'],
+			'slides'                 => $base['slides'],
+			'slides_tablet'          => $base['slides_tablet'],
+			'slides_mobile'          => $base['slides_mobile'],
+			'gap'                    => $base['gap'],
+			'arrows'                 => $base['arrows'],
+			'pagination'             => $base['pagination'],
+			'buy'                    => $base['buy'],
+			'buy_text'               => $base['buy_text'],
+			'cover'                  => $base['cover'],
+			'subcategories'          => $base['subcategories'],
+			'title_align'            => $base['title_align'],
+			'products'               => $base['products'],
+			// 13-key extension (CM-9): the base carries the new keys after
+			// normalize(), so absent shortcode atts fall through to the
+			// instance/builtin values.
+			'autoplay'               => $base['autoplay'],
+			'stop_on_hover'          => $base['stop_on_hover'],
+			'timeout'                => $base['timeout'],
+			'speed'                  => $base['speed'],
+			'loop'                   => $base['loop'],
+			'nav_position'           => $base['nav_position'],
+			'nav_color_arrow'        => $base['nav_color_arrow'],
+			'nav_color_bg'           => $base['nav_color_bg'],
+			'nav_color_border'       => $base['nav_color_border'],
+			'nav_color_arrow_hover'  => $base['nav_color_arrow_hover'],
+			'nav_color_bg_hover'     => $base['nav_color_bg_hover'],
+			'nav_color_border_hover' => $base['nav_color_border_hover'],
+			'slides_laptop'          => $base['slides_laptop'],
 		);
 
 		return $this->normalize( wp_parse_args( $atts, $known ) );
@@ -175,7 +191,7 @@ class CWC_Settings {
 	 * @since 0.1.0
 	 *
 	 * @param string $name Instance slug (may be empty for the default).
-	 * @return array Normalized 18-key config for the base.
+	 * @return array Normalized 31-key config for the base.
 	 */
 	public function instance_base( string $name ): array {
 		$registry = $this->registry();
@@ -203,7 +219,7 @@ class CWC_Settings {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @return array { slug => normalized 18-key config } for the two seeds.
+	 * @return array { slug => normalized 31-key config } for the two seeds.
 	 */
 	public function seeds(): array {
 		return array(
@@ -250,24 +266,40 @@ class CWC_Settings {
 	 */
 	public function builtins(): array {
 		return array(
-			'type'          => 'product',
-			'title'         => '',
-			'category'      => 0,
-			'categories'    => array(),
-			'mix'           => false,
-			'count'         => 8,
-			'slides'        => 3,
-			'slides_tablet' => 2,
-			'slides_mobile' => 1,
-			'gap'           => 16,
-			'arrows'        => true,
-			'pagination'    => true,
-			'buy'           => true,
-			'buy_text'      => 'Comprar',
-			'cover'         => false,
-			'subcategories' => false,
-			'title_align'   => 'left',
-			'products'      => array(),
+			'type'                   => 'product',
+			'title'                  => '',
+			'category'               => 0,
+			'categories'             => array(),
+			'mix'                    => false,
+			'count'                  => 8,
+			'slides'                 => 3,
+			'slides_tablet'          => 2,
+			'slides_mobile'          => 1,
+			'gap'                    => 16,
+			'arrows'                 => true,
+			'pagination'             => true,
+			'buy'                    => true,
+			'buy_text'               => 'Comprar',
+			'cover'                  => false,
+			'subcategories'          => false,
+			'title_align'            => 'left',
+			'products'               => array(),
+			// 13-key extension (CM-12): autoplay/loop default off, hover-pause
+			// and corners on, timing mid-range, nav colors empty (theme
+			// default), laptop ramp one step below desktop.
+			'autoplay'               => false,
+			'stop_on_hover'          => true,
+			'timeout'                => 3000,
+			'speed'                  => 300,
+			'loop'                   => false,
+			'nav_position'           => 'bottom-right',
+			'nav_color_arrow'        => '',
+			'nav_color_bg'           => '',
+			'nav_color_border'       => '',
+			'nav_color_arrow_hover'  => '',
+			'nav_color_bg_hover'     => '',
+			'nav_color_border_hover' => '',
+			'slides_laptop'          => 2,
 		);
 	}
 
@@ -310,7 +342,27 @@ class CWC_Settings {
 			'subcategories' => $this->parse_bool( $merged['subcategories'] ),
 			'title_align'   => $this->sanitize_title_align( $merged['title_align'] ),
 			'products'      => $this->sanitize_ids( $merged['products'] ),
+			// 13-key extension (CM-13): booleans via parse_bool, timings and
+			// the laptop ramp via absint + clamp, the corner enum via the
+			// shared whitelist.
+			'autoplay'      => $this->parse_bool( $merged['autoplay'] ),
+			'stop_on_hover' => $this->parse_bool( $merged['stop_on_hover'] ),
+			'loop'          => $this->parse_bool( $merged['loop'] ),
+			'timeout'       => min( 60000, max( 1000, absint( $merged['timeout'] ) ) ),
+			'speed'         => min( 5000, max( 100, absint( $merged['speed'] ) ) ),
+			'slides_laptop' => min( 12, max( 1, absint( $merged['slides_laptop'] ) ) ),
+			'nav_position'  => $this->sanitize_nav_position( $merged['nav_position'] ),
 		);
+
+		// Nav colors: empty passes through (theme default), any invalid hex
+		// coerces to '' via sanitize_hex_color(). The empty check runs FIRST
+		// because sanitize_hex_color( '' ) yields an empty string, not a
+		// usable default (CM-13).
+		foreach ( $this->nav_color_keys() as $color_key ) {
+			$color = (string) $merged[ $color_key ];
+
+			$normalized[ $color_key ] = ( '' === $color ) ? '' : (string) sanitize_hex_color( $color );
+		}
 
 		if ( '' === $normalized['buy_text'] ) {
 			$normalized['buy_text'] = $this->builtins()['buy_text'];
@@ -371,6 +423,79 @@ class CWC_Settings {
 		$value = (string) $value;
 
 		return in_array( $value, $this->title_alignments(), true ) ? $value : 'left';
+	}
+
+	/**
+	 * Returns the valid navigation-position values.
+	 *
+	 * Single source of truth for the nav-position whitelist (D2): normalize()
+	 * and the admin's nav-position select renderer both consume this list, so
+	 * the renderer options can never drift from the sanitizer. The four
+	 * corners keep the legacy corner placement; the two side modes are the
+	 * PR 6 extension (CR-11 amendment): `sides-inside` positions the arrows
+	 * at the vertical middle inside the container (CSS only, no markup
+	 * change), `sides-outside` moves them out of `.swiper` as flanking
+	 * siblings inside a flex shell (CM-13 amendment, D6 amendment). Mirrors
+	 * the title_alignments() pattern.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return string[] Valid nav-position values (bottom-right, bottom-left,
+	 *                  top-right, top-left, sides-inside, sides-outside).
+	 */
+	public function nav_positions(): array {
+		return array(
+			'bottom-right',
+			'bottom-left',
+			'top-right',
+			'top-left',
+			'sides-inside',
+			'sides-outside',
+		);
+	}
+
+	/**
+	 * Sanitizes a raw nav-position value against the whitelist.
+	 *
+	 * Any value outside the six positions falls back to `bottom-right` — the
+	 * same rule normalize() applies when the merged config carries an invalid
+	 * or absent position (CM-13, D2). The admin's select renderer uses it to
+	 * pick the selected option, and normalize() uses it as the shared coerce
+	 * point (title_alignments() pattern).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param mixed $value Raw nav-position value.
+	 * @return string Valid position: 'bottom-right', 'bottom-left',
+	 *                'top-right', 'top-left', 'sides-inside' or
+	 *                'sides-outside'.
+	 */
+	public function sanitize_nav_position( $value ): string {
+		$value = (string) $value;
+
+		return in_array( $value, $this->nav_positions(), true ) ? $value : 'bottom-right';
+	}
+
+	/**
+	 * Returns the nav-color config keys.
+	 *
+	 * Single source of truth for the six nav-color keys (D2): normalize()
+	 * coerces exactly this list, and the renderer emits one CSS variable per
+	 * non-empty key, so the coercion set and the emitted set can never drift.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return string[] Valid nav-color keys (arrow, bg, border + hover pair).
+	 */
+	public function nav_color_keys(): array {
+		return array(
+			'nav_color_arrow',
+			'nav_color_bg',
+			'nav_color_border',
+			'nav_color_arrow_hover',
+			'nav_color_bg_hover',
+			'nav_color_border_hover',
+		);
 	}
 
 	/**

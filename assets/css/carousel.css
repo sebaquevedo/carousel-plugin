@@ -193,9 +193,162 @@
 	text-align: center;
 }
 
+/**
+ * Nav-arrow positioning and theming (CR-11, FA-9).
+ *
+ * Bottom-right is the DEFAULT corner: it targets the unclassed container (D6),
+ * so legacy markup keeps its class-less wrapper. The three modifier classes
+ * restyle the same buttons for the other corners. Color tokens wire through
+ * the --cwc-nav-color-* variables the renderer emits per non-empty key
+ * (CR-11), with fallbacks to the theme tokens (FA-3): the arrow glyph keeps
+ * the accent color and the background/border stay transparent when unset, so
+ * today's look survives for legacy carousels.
+ */
 .cwc-carousel .swiper-button-prev,
 .cwc-carousel .swiper-button-next {
-	color: var( --cwc-color-accent );
+	box-sizing: border-box;
+	top: auto;
+	bottom: 16px;
+	margin-top: 0;
+	width: 40px;
+	height: 40px;
+	background-color: var( --cwc-nav-color-bg, transparent );
+	border: 1px solid var( --cwc-nav-color-border, transparent );
+	border-radius: var( --cwc-border-radius );
+	color: var( --cwc-nav-color-arrow, var( --cwc-color-accent ) );
+}
+
+.cwc-carousel .swiper-button-prev {
+	left: auto;
+	right: 64px;
+}
+
+.cwc-carousel .swiper-button-next {
+	right: 16px;
+}
+
+.cwc-carousel .swiper-button-prev:hover,
+.cwc-carousel .swiper-button-next:hover {
+	background-color: var( --cwc-nav-color-bg-hover, var( --cwc-nav-color-bg, transparent ) );
+	border-color: var( --cwc-nav-color-border-hover, var( --cwc-nav-color-border, transparent ) );
+	color: var( --cwc-nav-color-arrow-hover, var( --cwc-nav-color-arrow, var( --cwc-color-accent ) ) );
+}
+
+.cwc-carousel--nav-bottom-left .swiper-button-prev {
+	left: 16px;
+	right: auto;
+}
+
+.cwc-carousel--nav-bottom-left .swiper-button-next {
+	left: 64px;
+	right: auto;
+}
+
+.cwc-carousel--nav-top-right .swiper-button-prev,
+.cwc-carousel--nav-top-right .swiper-button-next {
+	top: 16px;
+	bottom: auto;
+}
+
+.cwc-carousel--nav-top-right .swiper-button-prev {
+	left: auto;
+	right: 64px;
+}
+
+.cwc-carousel--nav-top-right .swiper-button-next {
+	right: 16px;
+}
+
+.cwc-carousel--nav-top-left .swiper-button-prev,
+.cwc-carousel--nav-top-left .swiper-button-next {
+	top: 16px;
+	bottom: auto;
+}
+
+.cwc-carousel--nav-top-left .swiper-button-prev {
+	left: 16px;
+	right: auto;
+}
+
+.cwc-carousel--nav-top-left .swiper-button-next {
+	left: 64px;
+	right: auto;
+}
+
+/**
+ * Side modes (CR-11 amendment, PR 6).
+ *
+ * sides-inside: the container keeps the modifier class and the arrows stay
+ * inside `.swiper`; Swiper positions them absolutely, so the rules here only
+ * re-center them at the vertical middle of the track and push them to the
+ * edges (bottom: auto / top: 50% + translateY so the 40px button is exactly
+ * centered, not its top edge). These selectors share the corner rules'
+ * specificity (0,2,0), so they MUST come after them in the stylesheet to
+ * win the cascade; they do not touch the corner modifiers.
+ *
+ * sides-outside: the renderer wraps the carousel in a
+ * `.cwc-carousel-shell` flex wrapper with the buttons as flanking SIBLINGS
+ * of `.swiper` (D6 amendment), so the base `.cwc-carousel .swiper-button-*`
+ * rules never reach them. The shell rules give the buttons the same 40px
+ * themed look, strip Swiper's absolute positioning (position: static, the
+ * buttons become ordinary flex items), and lay the track out as
+ * [prev] [slider] [next] with the slider taking the free space. The shell
+ * carries the --cwc-nav-color-* variables and inherits the theme tokens
+ * (FA-3), so the color wiring matches the corner modes.
+ */
+.cwc-carousel--nav-sides-inside .swiper-button-prev,
+.cwc-carousel--nav-sides-inside .swiper-button-next {
+	top: 50%;
+	bottom: auto;
+	margin-top: 0;
+	transform: translateY( -50% );
+}
+
+.cwc-carousel--nav-sides-inside .swiper-button-prev {
+	left: 16px;
+	right: auto;
+}
+
+.cwc-carousel--nav-sides-inside .swiper-button-next {
+	left: auto;
+	right: 16px;
+}
+
+.cwc-carousel-shell {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: var( --cwc-gap );
+	margin: 0 0 calc( var( --cwc-gap ) * 2 );
+}
+
+/* The slider takes the free space; the buttons keep their own size. */
+.cwc-carousel-shell .cwc-carousel {
+	flex: 1 1 0%;
+	min-width: 0;
+	margin-bottom: 0;
+}
+
+.cwc-carousel-shell .swiper-button-prev,
+.cwc-carousel-shell .swiper-button-next {
+	box-sizing: border-box;
+	position: static;
+	top: auto;
+	margin-top: 0;
+	flex: 0 0 auto;
+	width: 40px;
+	height: 40px;
+	background-color: var( --cwc-nav-color-bg, transparent );
+	border: 1px solid var( --cwc-nav-color-border, transparent );
+	border-radius: var( --cwc-border-radius );
+	color: var( --cwc-nav-color-arrow, var( --cwc-color-accent ) );
+}
+
+.cwc-carousel-shell .swiper-button-prev:hover,
+.cwc-carousel-shell .swiper-button-next:hover {
+	background-color: var( --cwc-nav-color-bg-hover, var( --cwc-nav-color-bg, transparent ) );
+	border-color: var( --cwc-nav-color-border-hover, var( --cwc-nav-color-border, transparent ) );
+	color: var( --cwc-nav-color-arrow-hover, var( --cwc-nav-color-arrow, var( --cwc-color-accent ) ) );
 }
 
 .cwc-carousel .swiper-pagination-bullet-active {

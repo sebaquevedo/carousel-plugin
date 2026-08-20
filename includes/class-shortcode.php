@@ -46,7 +46,12 @@ class CWC_Shortcode {
 	 * `subcategories` and `title_align` are likewise whitelisted so cover-mode
 	 * attributes reach resolve(); an empty string (missing att) falls through
 	 * to the instance/builtin default, and coercion lives in CWC_Settings
-	 * (SC-10, CM-11). The legacy `ids`
+	 * (SC-10, CM-11). The 13 new config keys (`autoplay`, `stop_on_hover`,
+	 * `timeout`, `speed`, `loop`, `nav_position`, the six `nav_color_*`
+	 * values and `slides_laptop`) are whitelisted the same way so they
+	 * reach resolve(); an empty-string att falls through to the
+	 * instance/builtin default and an explicit value overrides it, with
+	 * coercion left to the config model (SC-12, CM-13). The legacy `ids`
 	 * attribute is kept for backwards compatibility: when present it drives
 	 * the manual-ID product query path instead of the resolved selection
 	 * (PQ-2). The `products` attribute is whitelisted so a resolved non-empty
@@ -69,26 +74,43 @@ class CWC_Shortcode {
 	public function render( $atts ): string {
 		$atts = shortcode_atts(
 			array(
-				'name'          => '',
-				'type'          => '',
-				'title'         => '',
-				'category'      => '',
-				'categories'    => '',
-				'mix'           => '',
-				'count'         => '',
-				'slides'        => '',
-				'slides_tablet' => '',
-				'slides_mobile' => '',
-				'gap'           => '',
-				'arrows'        => '',
-				'pagination'    => '',
-				'buy'           => '',
-				'buy_text'      => '',
-				'cover'         => '',
-				'subcategories' => '',
-				'title_align'   => '',
-				'products'      => '',
-				'ids'           => '',
+				'name'                   => '',
+				'type'                   => '',
+				'title'                  => '',
+				'category'               => '',
+				'categories'             => '',
+				'mix'                    => '',
+				'count'                  => '',
+				'slides'                 => '',
+				'slides_tablet'          => '',
+				'slides_mobile'          => '',
+				'gap'                    => '',
+				'arrows'                 => '',
+				'pagination'             => '',
+				'buy'                    => '',
+				'buy_text'               => '',
+				'cover'                  => '',
+				'subcategories'          => '',
+				'title_align'            => '',
+				'products'               => '',
+				'ids'                    => '',
+				// 13-key extension (SC-12): an empty string (missing att)
+				// falls through resolve()'s empty-string filter to the
+				// instance/builtin default (BC); an explicit value overrides.
+				// Coercion stays in the config model (CM-13).
+				'autoplay'               => '',
+				'stop_on_hover'          => '',
+				'timeout'                => '',
+				'speed'                  => '',
+				'loop'                   => '',
+				'nav_position'           => '',
+				'nav_color_arrow'        => '',
+				'nav_color_bg'           => '',
+				'nav_color_border'       => '',
+				'nav_color_arrow_hover'  => '',
+				'nav_color_bg_hover'     => '',
+				'nav_color_border_hover' => '',
+				'slides_laptop'          => '',
 			),
 			$atts,
 			'cwc_carousel'
