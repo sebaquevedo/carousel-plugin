@@ -39,7 +39,13 @@ class CWC_Renderer {
 	 * no render flag, so no assets are enqueued (CR-2). The escaped title
 	 * heading renders above the carousel only when non-empty (CR-4). The
 	 * resolved config is emitted once, as an escaped JSON data attribute, so
-	 * each instance carries its own Swiper options (CR-7).
+	 * each instance carries its own Swiper options (CR-7) — the resolved
+	 * contract always carries the 13 extended keys (CM-9), so every instance
+	 * exposes them (CR-11). The wrapper gains a nav-position modifier class
+	 * only when the corner differs from the default bottom-right, and a style
+	 * attribute listing one CSS custom property per non-empty nav color
+	 * (CR-11, D6); legacy markup therefore stays byte-identical in wrapper
+	 * class and style.
 	 *
 	 * @since 0.1.0
 	 *
@@ -74,7 +80,40 @@ class CWC_Renderer {
 			$container_class .= ' cwc-carousel--cover';
 		}
 
-		$output .= '<div class="' . esc_attr( $container_class ) . '" data-cwc-config="' . esc_attr( wp_json_encode( $config ) ) . '">';
+		// Nav-position wrapper class (CR-11, D6): emitted only when the corner
+		// differs from the default bottom-right, so the default emits today's
+		// class-less markup (BC). resolve()/normalize() guarantee the corner
+		// whitelist (CM-13); the empty() guard also keeps a raw legacy config
+		// from emitting a stray class or a PHP notice.
+		if ( ! empty( $config['nav_position'] ) && 'bottom-right' !== $config['nav_position'] ) {
+			$container_class .= ' cwc-carousel--nav-' . $config['nav_position'];
+		}
+
+		// Nav-color CSS variables (CR-11, D6): one custom property per
+		// non-empty key, iterated over the shared nav_color_keys() list so the
+		// emitted set can never drift from normalize()'s coercion set (D2).
+		// Empty colors emit no variable — carousel.css falls back to the theme
+		// default (FA-3). The whole style attribute is escaped once at the
+		// single output point below.
+		$nav_colors = array();
+		$settings   = new CWC_Settings();
+
+		foreach ( $settings->nav_color_keys() as $color_key ) {
+			if ( empty( $config[ $color_key ] ) ) {
+				continue;
+			}
+
+			// CR-11 variable names are kebab-case: strip the key prefix and
+			// fold the remaining underscore (border_hover -> border-hover).
+			$suffix       = str_replace( array( 'nav_color_', '_' ), array( '', '-' ), $color_key );
+			$nav_colors[] = '--cwc-nav-color-' . $suffix . ':' . $config[ $color_key ];
+		}
+
+		$container_style = empty( $nav_colors )
+			? ''
+			: ' style="' . esc_attr( implode( ';', $nav_colors ) . ';' ) . '"';
+
+		$output .= '<div class="' . esc_attr( $container_class ) . '"' . $container_style . ' data-cwc-config="' . esc_attr( wp_json_encode( $config ) ) . '">';
 		$output .= '<div class="swiper-wrapper">';
 
 		if ( 'category' === $config['type'] ) {

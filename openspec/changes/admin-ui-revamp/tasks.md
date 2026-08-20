@@ -67,9 +67,9 @@ Chain base: main or previous PR branch (orchestrator resolves chain strategy wit
 
 ## Phase 5: Renderer + Frontend Wiring (PR 5)
 
-- [ ] 5.1 `includes/class-renderer.php`: nav-position class when ≠ bottom-right; `--cwc-nav-color-*` vars only non-empty; 31-key `data-cwc-config` (CR-11)
-- [ ] 5.2 `frontend.js` `buildOptions`: autoplay `{delay, pauseOnMouseEnter}` only `===true`; speed on `typeof number`; loop only `===true`; 992 tier only when slides_laptop>0 (FA-8)
-- [ ] 5.3 `carousel.css`: 4 corner rules; `--cwc-nav-color-*` wiring with fallbacks (FA-9)
+- [x] 5.1 `includes/class-renderer.php`: nav-position class when ≠ bottom-right; `--cwc-nav-color-*` vars only non-empty; 31-key `data-cwc-config` (CR-11)
+- [x] 5.2 `frontend.js` `buildOptions`: autoplay `{delay, pauseOnMouseEnter}` only `===true`; speed on `typeof number`; loop only `===true`; 992 tier only when slides_laptop>0 (FA-8)
+- [x] 5.3 `carousel.css`: 4 corner rules; `--cwc-nav-color-*` wiring with fallbacks (FA-9)
 
 **Acceptance**: wp eval pre/post diff — legacy markup byte-identical; only non-empty vars; 1000px→laptop, ≥1024/<768 unchanged; admin assets admin-only.
 
