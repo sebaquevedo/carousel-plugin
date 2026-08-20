@@ -2,7 +2,7 @@
  * Admin scripts: tabbed editor chrome, shortcode copy, and the enhanced-search
  * picker chips with inline per-chip uploader.
  *
- * Three modules, all scoped to the Carousel settings screen by CWC_Assets
+ * Five modules, all scoped to the Carousel settings screen by CWC_Assets
  * (FA-5):
  *
  * 1. Tabs — the four-panel editor (AS-16, D5) renders as nav-tab <button>s
@@ -43,10 +43,22 @@
  *    happens through the settings form's admin_init handler as usual — this
  *    script only mutates the DOM, it performs no AJAX (AS-3).
  *
- * The wp.media guard wraps ONLY the picker/uploader module: tabs and copy
- * run regardless, so the new behavior never depends on the media library
- * being primed (D8 module split — the old whole-script early return killed
- * everything on any other admin screen reached by a race).
+ * 5. Type rows — the Content panel's Products and Cover-mode rows (AS-17 PR 6
+ *    amendment): both rows always render in the PHP markup and carry
+ *    `data-cwc-type-row="product|category"`; the row that does not match the
+ *    SAVED type starts with the HTML `hidden` attribute (so a JS-free browser
+ *    sees exactly today's fields, no-JS fallback). This module toggles
+ *    `hidden` as the `[data-cwc-type-select]` select changes, so switching
+ *    between Products and Categories swaps the visible rows live (D8 split —
+ *    no wp.media dependency). Hidden rows still POST their fields, and the
+ *    sanitizer accepts both keys for either type, so the values survive the
+ *    round-trip when the type is switched back.
+ *
+ * The wp.media guard wraps ONLY the picker/uploader module: tabs, copy,
+ * color sync and type rows run regardless, so the new behavior never depends
+ * on the media library being primed (D8 module split — the old whole-script
+ * early return killed everything on any other admin screen reached by a
+ * race).
  *
  * All user-facing strings come from the `cwcCarouselAdmin` object that
  * wp_localize_script registers with this script — no hardcoded literals
@@ -73,12 +85,13 @@
 			initTabs();
 			initShortcodeCopy();
 			initColorSync();
+			initTypeRows();
 
 			// wp.media is only present after wp_enqueue_media() has primed it;
 			// without it the uploader has nothing to open, so the picker/
 			// uploader module bails silently on screens where that race
-			// happens (defensive, FA-5). Tabs, copy and color sync above
-			// already ran.
+			// happens (defensive, FA-5). Tabs, copy, color sync and type rows
+			// above already ran.
 			if ( typeof window.wp !== 'undefined' && typeof window.wp.media !== 'undefined' ) {
 				initPickers();
 			}
@@ -296,6 +309,42 @@
 					}
 				}
 			);
+		} );
+	}
+
+	/**
+	 * Toggles the type-conditional Content rows (AS-17 PR 6 amendment, D8).
+	 *
+	 * The Products row carries `data-cwc-type-row="product"` and the Cover
+	 * mode row `data-cwc-type-row="category"`; both always render in the PHP
+	 * markup, with the non-matching row starting `hidden` (no-JS fallback —
+	 * a browser without this script sees exactly today's fields). Changing
+	 * the type select (`[data-cwc-type-select]`) reveals the row for the new
+	 * type and hides the other. Runs unconditionally — this module needs no
+	 * wp.media (D8 module split).
+	 *
+	 * @return {void}
+	 */
+	function initTypeRows() {
+		var selects = document.querySelectorAll( '[data-cwc-type-select]' );
+
+		selects.forEach( function ( select ) {
+			var rows = document.querySelectorAll( '[data-cwc-type-row]' );
+
+			function update() {
+				var type = select.value;
+
+				rows.forEach( function ( row ) {
+					// The value attribute is the row's own type key
+					// ("product" / "category"); hide rows that do not match
+					// the selected type.
+					row.hidden = row.getAttribute( 'data-cwc-type-row' ) !== type;
+				} );
+			}
+
+			// The initial state was rendered server-side from the SAVED type;
+			// the change handler keeps it in sync as the user edits.
+			select.addEventListener( 'change', update );
 		} );
 	}
 

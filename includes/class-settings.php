@@ -426,26 +426,38 @@ class CWC_Settings {
 	}
 
 	/**
-	 * Returns the valid navigation-position corner values.
+	 * Returns the valid navigation-position values.
 	 *
 	 * Single source of truth for the nav-position whitelist (D2): normalize()
 	 * and the admin's nav-position select renderer both consume this list, so
-	 * the renderer options can never drift from the sanitizer. Mirrors the
-	 * title_alignments() pattern.
+	 * the renderer options can never drift from the sanitizer. The four
+	 * corners keep the legacy corner placement; the two side modes are the
+	 * PR 6 extension (CR-11 amendment): `sides-inside` positions the arrows
+	 * at the vertical middle inside the container (CSS only, no markup
+	 * change), `sides-outside` moves them out of `.swiper` as flanking
+	 * siblings inside a flex shell (CM-13 amendment, D6 amendment). Mirrors
+	 * the title_alignments() pattern.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @return string[] Valid nav-position values (bottom-right, bottom-left,
-	 *                  top-right, top-left).
+	 *                  top-right, top-left, sides-inside, sides-outside).
 	 */
 	public function nav_positions(): array {
-		return array( 'bottom-right', 'bottom-left', 'top-right', 'top-left' );
+		return array(
+			'bottom-right',
+			'bottom-left',
+			'top-right',
+			'top-left',
+			'sides-inside',
+			'sides-outside',
+		);
 	}
 
 	/**
-	 * Sanitizes a raw nav-position value against the corner whitelist.
+	 * Sanitizes a raw nav-position value against the whitelist.
 	 *
-	 * Any value outside the four corners falls back to `bottom-right` — the
+	 * Any value outside the six positions falls back to `bottom-right` — the
 	 * same rule normalize() applies when the merged config carries an invalid
 	 * or absent position (CM-13, D2). The admin's select renderer uses it to
 	 * pick the selected option, and normalize() uses it as the shared coerce
@@ -454,8 +466,9 @@ class CWC_Settings {
 	 * @since 0.1.0
 	 *
 	 * @param mixed $value Raw nav-position value.
-	 * @return string Valid corner: 'bottom-right', 'bottom-left', 'top-right'
-	 *                or 'top-left'.
+	 * @return string Valid position: 'bottom-right', 'bottom-left',
+	 *                'top-right', 'top-left', 'sides-inside' or
+	 *                'sides-outside'.
 	 */
 	public function sanitize_nav_position( $value ): string {
 		$value = (string) $value;
