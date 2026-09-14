@@ -63,14 +63,14 @@ class CWC_Assets {
 	public function register_assets() {
 		wp_register_style(
 			'cwc-swiper',
-			CWC_URL . 'assets/vendor/swiper/swiper-bundle.min.css',
+			CWC_URL . 'assets/lib/swiper/swiper-bundle.min.css',
 			array(),
 			'14.0.7'
 		);
 
 		wp_register_script(
 			'cwc-swiper',
-			CWC_URL . 'assets/vendor/swiper/swiper-bundle.min.js',
+			CWC_URL . 'assets/lib/swiper/swiper-bundle.min.js',
 			array(),
 			'14.0.7',
 			true

@@ -19,6 +19,22 @@
 	--cwc-title-gap: 24px; /* Breathing room below the section title. */
 }
 
+/**
+ * Theme compatibility overrides.
+ *
+ * Astra (and similar block-enabled themes) apply max-width and auto-margins
+ * to direct children of .entry-content[data-ast-blocks-layout], which
+ * constrains the carousel to the content width and breaks the slide layout.
+ * We reset those inherited constraints so the carousel fills the available
+ * width inside its parent container.
+ */
+[data-ast-blocks-layout] > .cwc-carousel,
+[data-ast-blocks-layout] > .cwc-carousel-shell {
+	max-width: none;
+	margin-left: 0;
+	margin-right: 0;
+}
+
 .cwc-carousel {
 	/* Colors. */
 	--cwc-color-text: #1a1a1a;
@@ -44,6 +60,17 @@
 	font-family: var( --cwc-font-family );
 	font-size: var( --cwc-font-size );
 	color: var( --cwc-color-text );
+}
+
+/**
+ * Swiper wrapper centering.
+ *
+ * When there are fewer slides than the viewport can hold (e.g. 2 products
+ * on a 3-slide desktop ramp), the slides align to the start by default.
+ * justify-content: center keeps them visually balanced.
+ */
+.cwc-carousel .swiper-wrapper {
+	justify-content: center;
 }
 
 .cwc-carousel__title {
