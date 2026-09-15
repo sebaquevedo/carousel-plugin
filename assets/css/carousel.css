@@ -64,7 +64,7 @@
 
 .cwc-carousel__title {
 	margin: 0 0 var( --cwc-title-gap );
-	font-size: var( --cwc-title-font-size );
+	font-size: inherit;
 	color: var( --cwc-color-title );
 }
 
