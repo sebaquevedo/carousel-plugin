@@ -62,17 +62,6 @@
 	color: var( --cwc-color-text );
 }
 
-/**
- * Swiper wrapper centering.
- *
- * When there are fewer slides than the viewport can hold (e.g. 2 products
- * on a 3-slide desktop ramp), the slides align to the start by default.
- * justify-content: center keeps them visually balanced.
- */
-.cwc-carousel .swiper-wrapper {
-	justify-content: center;
-}
-
 .cwc-carousel__title {
 	margin: 0 0 var( --cwc-title-gap );
 	font-size: var( --cwc-title-font-size );
