@@ -80,7 +80,7 @@ class CWC_Assets {
 			'cwc-carousel',
 			CWC_URL . 'assets/css/carousel.css',
 			array( 'cwc-swiper' ),
-			CWC_VERSION
+			'0.1.1'
 		);
 
 		wp_register_script(
