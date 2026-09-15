@@ -665,6 +665,82 @@
 	}
 
 	/**
+	 * Captures live user edits from existing chips before a rebuild.
+	 *
+	 * When rebuildChipList destroys and recreates chips, in-progress overlay
+	 * titles and uploaded image ids are lost because the new chips read from
+	 * the option's server-side data-* attributes. This function snapshots the
+	 * current input values keyed by term id so restoreLiveData can re-apply
+	 * them after the rebuild (D5 bugfix).
+	 *
+	 * @param {HTMLElement} list Chip list element.
+	 * @return {Object} Map of { termId: { title: string, imageId: string } }.
+	 */
+	function captureLiveData( list ) {
+		var data = {};
+
+		list.querySelectorAll( 'li[data-id]' ).forEach( function ( chip ) {
+			var id   = chip.getAttribute( 'data-id' );
+			var titleInput = chip.querySelector( '.cwc-cat-title-input' );
+			var imageInput = chip.querySelector( '.cwc-cat-image-id' );
+
+			if ( titleInput || imageInput ) {
+				data[ id ] = {
+					title:   titleInput ? titleInput.value : '',
+					imageId: imageInput ? imageInput.value : ''
+				};
+			}
+		} );
+
+		return data;
+	}
+
+	/**
+	 * Restores live user edits into freshly rebuilt chips.
+	 *
+	 * Pairs with captureLiveData: after rebuildChipList recreates chips from
+	 * server-side data, this function re-applies the user's in-progress edits
+	 * so overlay titles and uploaded images survive the DOM rebuild (D5
+	 * bugfix).
+	 *
+	 * @param {HTMLElement} list     Chip list element.
+	 * @param {Object}      liveData Map from captureLiveData.
+	 * @return {void}
+	 */
+	function restoreLiveData( list, liveData ) {
+		if ( ! liveData || ! Object.keys( liveData ).length ) {
+			return;
+		}
+
+		list.querySelectorAll( 'li[data-id]' ).forEach( function ( chip ) {
+			var id   = chip.getAttribute( 'data-id' );
+			var edit = liveData[ id ];
+
+			if ( ! edit ) {
+				return;
+			}
+
+			var titleInput = chip.querySelector( '.cwc-cat-title-input' );
+			var imageInput = chip.querySelector( '.cwc-cat-image-id' );
+			var thumb      = chip.querySelector( '.cwc-chip-thumb' );
+
+			if ( titleInput && edit.title !== titleInput.value ) {
+				titleInput.value = edit.title;
+			}
+
+			if ( imageInput && edit.imageId !== imageInput.value ) {
+				imageInput.value = edit.imageId;
+
+				// Refresh the thumbnail preview when the image id was
+				// changed by the user (uploaded via wp.media).
+				if ( thumb && edit.imageId && Number( edit.imageId ) > 0 ) {
+					loadAttachment( Number( edit.imageId ), thumb );
+				}
+			}
+		} );
+	}
+
+	/**
 	 * Rebuilds the chip list from the select's selected options.
 	 *
 	 * The select is the source of truth for the selection; the list is the
@@ -680,6 +756,12 @@
 	function rebuildChipList( list, select, cta ) {
 		var options = select.querySelectorAll( 'option:checked' );
 
+		// Preserve in-progress user edits before destroying chips (bugfix:
+		// previously, switching tabs or adding a new category wiped overlay
+		// titles and uploaded images because rebuildChipList recreated chips
+		// from the server-side data-* attributes instead of the live inputs).
+		var liveData = captureLiveData( list );
+
 		while ( list.firstChild ) {
 			list.removeChild( list.firstChild );
 		}
@@ -687,6 +769,8 @@
 		options.forEach( function ( option ) {
 			list.appendChild( createChip( option ) );
 		} );
+
+		restoreLiveData( list, liveData );
 
 		if ( cta ) {
 			cta.hidden = options.length > 0;
