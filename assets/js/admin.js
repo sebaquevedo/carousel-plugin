@@ -373,6 +373,7 @@
 			}
 
 			initEnhancedSelect( picker, select );
+			guardSelectionBackspace( picker );
 			makeSortable( list, select );
 			rebuildChipList( list, select, cta );
 
@@ -407,6 +408,56 @@
 				);
 			}
 		} );
+	}
+
+	/**
+	 * Stops the enhanced select from deleting a selection on a bare Backspace.
+	 *
+	 * selectWoo clears the last selected item when Backspace is pressed while
+	 * the inline search input is empty (`select2/selection/search.js`). That is
+	 * a reasonable shortcut when its own tags are on screen — but .cwc-picker
+	 * hides them on purpose (admin.css) and renders the sortable chip list as
+	 * the visible source of truth instead. Kept as-is, the shortcut becomes an
+	 * invisible destructive action: the user presses Backspace with an empty
+	 * search box and a chip vanishes with nothing on screen explaining why.
+	 *
+	 * The chip's own remove button stays as the explicit, visible way to
+	 * deselect, so nothing is lost by ignoring this key.
+	 *
+	 * Bound in the capture phase on the picker wrapper so the event is stopped
+	 * on the way down, before selectWoo's own handler sees it.
+	 *
+	 * @param {HTMLElement} picker Picker wrapper element.
+	 * @return {void}
+	 */
+	function guardSelectionBackspace( picker ) {
+		picker.addEventListener(
+			'keydown',
+			function ( event ) {
+				if ( 'Backspace' !== event.key ) {
+					return;
+				}
+
+				// Only keys pressed on the enhanced select itself are intercepted.
+				// A chip's overlay-title input lives inside this same wrapper and
+				// must keep editing normally.
+				if ( ! event.target || ! event.target.closest || ! event.target.closest( '.select2-container' ) ) {
+					return;
+				}
+
+				var field = picker.querySelector( '.select2-search__field' );
+
+				// With text in the search box Backspace must keep deleting that
+				// text: only the empty-box case is destructive.
+				if ( field && '' !== field.value ) {
+					return;
+				}
+
+				event.stopPropagation();
+				event.preventDefault();
+			},
+			true
+		);
 	}
 
 	/**
