@@ -205,7 +205,7 @@ class CWC_Assets {
 			'cwc-carousel-admin',
 			CWC_URL . 'assets/css/admin.css',
 			array( 'woocommerce_admin_styles' ),
-			CWC_VERSION
+			$this->asset_version( 'assets/css/admin.css' )
 		);
 
 		// wp.media primes the uploader admin.js drives; jquery-ui-sortable
@@ -216,7 +216,7 @@ class CWC_Assets {
 			'cwc-carousel-admin',
 			CWC_URL . 'assets/js/admin.js',
 			array( 'jquery', 'jquery-ui-sortable', 'wc-enhanced-select' ),
-			CWC_VERSION,
+			$this->asset_version( 'assets/js/admin.js' ),
 			true
 		);
 
@@ -236,5 +236,32 @@ class CWC_Assets {
 				'overlayTitle' => __( 'Overlay title', 'cwc-carousel' ),
 			)
 		);
+	}
+
+	/**
+	 * Returns the cache-busting version argument for one admin asset.
+	 *
+	 * CWC_VERSION only moves when the plugin version is bumped, so enqueueing
+	 * it leaves the browser serving a stale admin.css/admin.js after every
+	 * edit — it already forced a manual "bump the version" commit once, and a
+	 * pushed JS fix silently did not reach the screen until the cache was
+	 * cleared by hand. The file mtime changes exactly when the file does, so
+	 * the asset URL changes with it and the browser always fetches the copy
+	 * that is actually on disk. CWC_VERSION stays the fallback if the file
+	 * cannot be stat'ed.
+	 *
+	 * Front-end handles keep the pinned/versioned arguments on purpose: the
+	 * vendored Swiper bundle must never drift from its 14.0.7 pin (FA-1).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $relative_path Asset path relative to the plugin directory.
+	 * @return string Version argument for wp_enqueue_style()/wp_enqueue_script().
+	 */
+	private function asset_version( string $relative_path ): string {
+		$path  = CWC_DIR . $relative_path;
+		$mtime = file_exists( $path ) ? filemtime( $path ) : false;
+
+		return ( false === $mtime ) ? CWC_VERSION : (string) $mtime;
 	}
 }
