@@ -8,3 +8,7 @@
 # Composer dev dependencies (WPCS). Never shipped in the plugin ZIP.
 /vendor/
 /composer.lock
+
+# Local WordPress backups (full site tree / archive). Never committed.
+/respaldo/
+/respaldo.zip
