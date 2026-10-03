@@ -8,6 +8,8 @@
  * - Per-category overlay titles (cwc_cat_title term meta)
  *
  * @since 0.1.0
+ *
+ * @package CWC_Carousel
  */
 
 // Abort if called directly.
