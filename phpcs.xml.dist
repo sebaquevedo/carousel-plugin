@@ -34,6 +34,11 @@
     <exclude-pattern>*/node_modules/*</exclude-pattern>
     <!-- Local WordPress backups: a full site tree that must never be linted. -->
     <exclude-pattern>*/respaldo/*</exclude-pattern>
+    <!-- Git internals. The review tooling drops candidate-view copies of the
+         whole plugin under .git/gentle-ai/candidate-views/, which phpcs would
+         otherwise lint as a second copy of every class (duplicate-class
+         warnings plus a duplicated error from the copied files). -->
+    <exclude-pattern>*/.git/*</exclude-pattern>
     <exclude-pattern>*.min.js</exclude-pattern>
     <exclude-pattern>*.min.css</exclude-pattern>
 </ruleset>
