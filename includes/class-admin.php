@@ -131,6 +131,7 @@ class CWC_Admin {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_init', array( $this, 'save_category_images' ) );
 		add_action( 'admin_init', array( $this, 'handle_registry_actions' ) );
+		add_filter( 'woocommerce_json_search_found_categories', array( $this, 'enrich_category_search_results' ) );
 	}
 
 	/**
@@ -715,6 +716,54 @@ class CWC_Admin {
 	}
 
 	/**
+	 * Resolves the per-term chip payload for the category picker.
+	 *
+	 * Single source of truth for the image/title baseline a category chip
+	 * needs. `render_categories_field()` renders it into the stored options'
+	 * `data-*` attributes and the AJAX search filter ships the same payload
+	 * under the response's `cwc_*` keys, so a search-added chip and a stored
+	 * chip can never drift (the drift is what let a search-added chip post an
+	 * empty image/title and delete the term meta).
+	 *
+	 * The image id resolves exactly as the renderer reads it (AS-3): the
+	 * `cwc_cat_image` override first, and only when that is `<= 0` the WC
+	 * `thumbnail_id`. The thumbnail URL and overlay title derive from that
+	 * resolution, matching CWC_Renderer's priority.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param WP_Term $term Category term to resolve.
+	 * @return array {
+	 *     Resolved chip fields.
+	 *
+	 *     @type int    $image_id Attachment id (0 when the term has no image).
+	 *     @type string $thumb    Thumbnail URL ('' when there is no image).
+	 *     @type string $title    Sanitized overlay title ('' when unset).
+	 * }
+	 */
+	private function category_chip_payload( WP_Term $term ): array {
+		$image_id = (int) get_term_meta( $term->term_id, $this->image_meta_key, true );
+
+		if ( $image_id <= 0 ) {
+			$image_id = (int) get_term_meta( $term->term_id, 'thumbnail_id', true );
+		}
+
+		$thumb = ( $image_id > 0 ) ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : '';
+		$title = sanitize_text_field( (string) get_term_meta( $term->term_id, $this->title_meta_key, true ) );
+
+		// wp_get_attachment_image_url() returns false for a missing attachment;
+		// normalize to '' so the JSON payload and the rendered attribute never
+		// diverge (esc_url( false ) renders '' on the stored option path).
+		$thumb = $thumb ? (string) $thumb : '';
+
+		return array(
+			'image_id' => $image_id,
+			'thumb'    => $thumb,
+			'title'    => $title,
+		);
+	}
+
+	/**
 	 * Renders the product_cat search picker (AS-11).
 	 *
 	 * A Select2 picker backed by WooCommerce's own
@@ -768,22 +817,13 @@ class CWC_Admin {
 						continue;
 					}
 
-					// Chip thumbnail: the custom upload overrides the WC
-					// thumbnail — same priority as CWC_Renderer (AS-3).
-					$image_id = (int) get_term_meta( $term->term_id, $this->image_meta_key, true );
-
-					if ( $image_id <= 0 ) {
-						$image_id = (int) get_term_meta( $term->term_id, 'thumbnail_id', true );
-					}
-
-					$thumb = ( $image_id > 0 ) ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : '';
-					$title = sanitize_text_field( (string) get_term_meta( $term->term_id, $this->title_meta_key, true ) );
+					$payload = $this->category_chip_payload( $term );
 
 					echo '<option value="' . esc_attr( $term->term_id ) . '"'
 						. selected( in_array( (int) $term->term_id, $selected, true ), true, false )
-						. ' data-thumb="' . esc_url( $thumb ) . '"'
-						. ' data-image-id="' . esc_attr( (string) $image_id ) . '"'
-						. ' data-title="' . esc_attr( $title ) . '">'
+						. ' data-thumb="' . esc_url( $payload['thumb'] ) . '"'
+						. ' data-image-id="' . esc_attr( (string) $payload['image_id'] ) . '"'
+						. ' data-title="' . esc_attr( $payload['title'] ) . '">'
 						. esc_html( $term->name )
 						. '</option>';
 				}
@@ -795,6 +835,63 @@ class CWC_Admin {
 		echo '<button type="button" class="button cwc-empty-cta"' . ( empty( $selected ) ? '' : ' hidden' ) . '>' . esc_html__( 'Add categories', 'cwc-carousel' ) . '</button>';
 		echo '</div>';
 		echo '<p class="description">' . esc_html__( 'Search and select categories; drag the chips to set the carousel order.', 'cwc-carousel' ) . '</p>';
+	}
+
+	/**
+	 * Attaches each category's chip payload to the AJAX category search.
+	 *
+	 * WooCommerce's `woocommerce_json_search_categories` endpoint returns a
+	 * map of WP_Term objects keyed by term id; the Select2 search result is
+	 * built from exactly those fields, so a search-added option is born with
+	 * no image/title baseline. Shipping the same payload
+	 * `render_categories_field()` renders — under stable `cwc_*` keys — lets
+	 * admin.js lay the baseline onto the new option before the chip is built,
+	 * and lets it refuse to emit posting inputs when the payload is missing
+	 * (the fail-safe: a chip that never loaded a term's state must never be
+	 * able to delete it).
+	 *
+	 * The term meta cache is primed once for the whole result set so the
+	 * per-term reads stay cheap; non-WP_Term entries are left untouched and
+	 * the array returns unchanged when there is nothing to enrich.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param array $found_categories WC_AJAX result map (WP_Term objects by
+	 *                                term id).
+	 * @return array Enriched result map.
+	 */
+	public function enrich_category_search_results( $found_categories ) {
+		if ( ! is_array( $found_categories ) ) {
+			return $found_categories;
+		}
+
+		$term_ids = array();
+
+		foreach ( $found_categories as $found ) {
+			if ( $found instanceof WP_Term ) {
+				$term_ids[] = $found->term_id;
+			}
+		}
+
+		if ( empty( $term_ids ) ) {
+			return $found_categories;
+		}
+
+		update_meta_cache( 'term', $term_ids );
+
+		foreach ( $found_categories as $key => $found ) {
+			if ( ! $found instanceof WP_Term ) {
+				continue;
+			}
+
+			$payload = $this->category_chip_payload( $found );
+
+			$found_categories[ $key ]->cwc_image_id = $payload['image_id'];
+			$found_categories[ $key ]->cwc_thumb    = $payload['thumb'];
+			$found_categories[ $key ]->cwc_title    = $payload['title'];
+		}
+
+		return $found_categories;
 	}
 
 	/**

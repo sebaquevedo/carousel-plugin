@@ -394,7 +394,47 @@
 			// the select's `option:checked` as the single source of truth.
 			window.jQuery( select ).on(
 				'select2:select select2:unselect',
-				function () {
+				function ( event ) {
+					// A search-added category option is born bare: selectWoo
+					// creates it from the AJAX result before firing
+					// select2:select, so at this point the option exists but
+					// carries none of the data-* attributes a stored option
+					// renders with. Copy the enriched baseline onto it BEFORE
+					// the rebuild so the chip is built with the term's stored
+					// image/title. Products use a different endpoint with no
+					// cwc_* fields, so the enrichment only applies to the
+					// category picker.
+					if (
+						'select2:select' === event.type &&
+						select.classList.contains( 'wc-category-search' ) &&
+						event.params &&
+						event.params.data
+					) {
+						var data   = event.params.data;
+						var option = select.querySelector( 'option[value="' + data.id + '"]' );
+
+						if ( option ) {
+							// All three keys must be present to treat the
+							// baseline as loaded: the values may legitimately be
+							// 0/''. A partial payload means the term's state
+							// could not be fully read, so the chip must not post
+							// anything rather than risk deleting what it could
+							// not load.
+							var hasBaseline =
+								undefined !== data.cwcImageId &&
+								undefined !== data.cwcThumb &&
+								undefined !== data.cwcTitle;
+
+							if ( hasBaseline ) {
+								option.setAttribute( 'data-image-id', String( data.cwcImageId ) );
+								option.setAttribute( 'data-title', String( data.cwcTitle ) );
+								option.setAttribute( 'data-thumb', String( data.cwcThumb ) );
+							} else {
+								option.setAttribute( 'data-cwc-unknown', '1' );
+							}
+						}
+					}
+
 					rebuildChipList( list, select, cta );
 				}
 			);
@@ -561,10 +601,35 @@
 										text: item
 									} );
 								} else {
-									results.push( {
+									var result = {
 										id: returnId ? String( item.term_id ) : item.slug,
 										text: item.formatted_name || item.name
-									} );
+									};
+
+									// The PHP filter enriches every search result with
+									// the per-term chip baseline (cwc_image_id /
+									// cwc_thumb / cwc_title) — the same payload
+									// render_categories_field() renders for stored
+									// categories. Carry it onto the result object so
+									// select2:select can lay it onto the bare option
+									// before the chip rebuild; when the filter is
+									// unavailable the keys stay undefined and the
+									// picker degrades to the data-cwc-unknown
+									// fail-safe instead of posting empty values that
+									// would delete the term meta.
+									if ( undefined !== item.cwc_image_id ) {
+										result.cwcImageId = item.cwc_image_id;
+									}
+
+									if ( undefined !== item.cwc_thumb ) {
+										result.cwcThumb = item.cwc_thumb;
+									}
+
+									if ( undefined !== item.cwc_title ) {
+										result.cwcTitle = item.cwc_title;
+									}
+
+									results.push( result );
 								}
 							} );
 						}
@@ -906,11 +971,19 @@
 	 * (sanitize_text_field, CR-9). Removing the chip does NOT clear the term
 	 * image — that meta is global to the term, not per carousel instance.
 	 *
+	 * An option marked `data-cwc-unknown` (the AJAX result carried no cwc_*
+	 * baseline) emits no inputs at all: a chip that never loaded the term's
+	 * state must never be able to delete it.
+	 *
 	 * @param {HTMLElement} li     Chip element being built.
 	 * @param {HTMLElement} option Selected option with data attributes.
 	 * @return {void}
 	 */
 	function appendEditControls( li, option ) {
+		if ( option.hasAttribute( 'data-cwc-unknown' ) ) {
+			return;
+		}
+
 		var imageId = document.createElement( 'input' );
 		var upload  = document.createElement( 'button' );
 		var title   = document.createElement( 'input' );
