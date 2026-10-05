@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Custom Woo Pro Carousel
  * Description: A modular WooCommerce product carousel plugin powered by Swiper.
- * Version: 0.1.0
+ * Version: 0.1.3
  * Author: Custom Woo Pro Carousel contributors
  * Requires PHP: 7.4
  * Text Domain: cwc-carousel
@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
+
 /*
  * -------------------------------------------------------------------------
  * Constants (defined only once when this file is loaded twice).
@@ -23,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 
 if ( ! defined( 'CWC_VERSION' ) ) {
-	define( 'CWC_VERSION', '0.1.0' );
+	define( 'CWC_VERSION', '0.1.3' );
 }
 
 if ( ! defined( 'CWC_FILE' ) ) {

@@ -19,6 +19,22 @@
 	--cwc-title-gap: 24px; /* Breathing room below the section title. */
 }
 
+/**
+ * Theme compatibility overrides.
+ *
+ * Astra (and similar block-enabled themes) apply max-width and auto-margins
+ * to direct children of .entry-content[data-ast-blocks-layout], which
+ * constrains the carousel to the content width and breaks the slide layout.
+ * We reset those inherited constraints so the carousel fills the available
+ * width inside its parent container.
+ */
+[data-ast-blocks-layout] > .cwc-carousel,
+[data-ast-blocks-layout] > .cwc-carousel-shell {
+	max-width: none;
+	margin-left: 0;
+	margin-right: 0;
+}
+
 .cwc-carousel {
 	/* Colors. */
 	--cwc-color-text: #1a1a1a;
@@ -48,7 +64,6 @@
 
 .cwc-carousel__title {
 	margin: 0 0 var( --cwc-title-gap );
-	font-size: var( --cwc-title-font-size );
 	color: var( --cwc-color-title );
 }
 
@@ -353,4 +368,31 @@
 
 .cwc-carousel .swiper-pagination-bullet-active {
 	background-color: var( --cwc-color-accent );
+}
+
+
+/**
+ * Mobile: nav arrows on the sides, vertically centered (cwc-mobile-side-nav).
+ * Overrides the default bottom-right corner on small screens only; desktop
+ * keeps its configured position. Same (0,2,0) specificity as the base rules,
+ * placed last so the media query wins when it matches.
+ */
+@media (max-width: 600px) {
+	.cwc-carousel .swiper-button-prev,
+	.cwc-carousel .swiper-button-next {
+		top: 50%;
+		bottom: auto;
+		margin-top: 0;
+		transform: translateY( -50% );
+	}
+
+	.cwc-carousel .swiper-button-prev {
+		left: 8px;
+		right: auto;
+	}
+
+	.cwc-carousel .swiper-button-next {
+		left: auto;
+		right: 8px;
+	}
 }

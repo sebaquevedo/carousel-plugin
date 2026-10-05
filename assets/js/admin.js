@@ -373,6 +373,7 @@
 			}
 
 			initEnhancedSelect( picker, select );
+			guardSelectionBackspace( picker );
 			makeSortable( list, select );
 			rebuildChipList( list, select, cta );
 
@@ -393,7 +394,47 @@
 			// the select's `option:checked` as the single source of truth.
 			window.jQuery( select ).on(
 				'select2:select select2:unselect',
-				function () {
+				function ( event ) {
+					// A search-added category option is born bare: selectWoo
+					// creates it from the AJAX result before firing
+					// select2:select, so at this point the option exists but
+					// carries none of the data-* attributes a stored option
+					// renders with. Copy the enriched baseline onto it BEFORE
+					// the rebuild so the chip is built with the term's stored
+					// image/title. Products use a different endpoint with no
+					// cwc_* fields, so the enrichment only applies to the
+					// category picker.
+					if (
+						'select2:select' === event.type &&
+						select.classList.contains( 'wc-category-search' ) &&
+						event.params &&
+						event.params.data
+					) {
+						var data   = event.params.data;
+						var option = select.querySelector( 'option[value="' + data.id + '"]' );
+
+						if ( option ) {
+							// All three keys must be present to treat the
+							// baseline as loaded: the values may legitimately be
+							// 0/''. A partial payload means the term's state
+							// could not be fully read, so the chip must not post
+							// anything rather than risk deleting what it could
+							// not load.
+							var hasBaseline =
+								undefined !== data.cwcImageId &&
+								undefined !== data.cwcThumb &&
+								undefined !== data.cwcTitle;
+
+							if ( hasBaseline ) {
+								option.setAttribute( 'data-image-id', String( data.cwcImageId ) );
+								option.setAttribute( 'data-title', String( data.cwcTitle ) );
+								option.setAttribute( 'data-thumb', String( data.cwcThumb ) );
+							} else {
+								option.setAttribute( 'data-cwc-unknown', '1' );
+							}
+						}
+					}
+
 					rebuildChipList( list, select, cta );
 				}
 			);
@@ -407,6 +448,56 @@
 				);
 			}
 		} );
+	}
+
+	/**
+	 * Stops the enhanced select from deleting a selection on a bare Backspace.
+	 *
+	 * selectWoo clears the last selected item when Backspace is pressed while
+	 * the inline search input is empty (`select2/selection/search.js`). That is
+	 * a reasonable shortcut when its own tags are on screen — but .cwc-picker
+	 * hides them on purpose (admin.css) and renders the sortable chip list as
+	 * the visible source of truth instead. Kept as-is, the shortcut becomes an
+	 * invisible destructive action: the user presses Backspace with an empty
+	 * search box and a chip vanishes with nothing on screen explaining why.
+	 *
+	 * The chip's own remove button stays as the explicit, visible way to
+	 * deselect, so nothing is lost by ignoring this key.
+	 *
+	 * Bound in the capture phase on the picker wrapper so the event is stopped
+	 * on the way down, before selectWoo's own handler sees it.
+	 *
+	 * @param {HTMLElement} picker Picker wrapper element.
+	 * @return {void}
+	 */
+	function guardSelectionBackspace( picker ) {
+		picker.addEventListener(
+			'keydown',
+			function ( event ) {
+				if ( 'Backspace' !== event.key ) {
+					return;
+				}
+
+				// Only keys pressed on the enhanced select itself are intercepted.
+				// A chip's overlay-title input lives inside this same wrapper and
+				// must keep editing normally.
+				if ( ! event.target || ! event.target.closest || ! event.target.closest( '.select2-container' ) ) {
+					return;
+				}
+
+				var field = picker.querySelector( '.select2-search__field' );
+
+				// With text in the search box Backspace must keep deleting that
+				// text: only the empty-box case is destructive.
+				if ( field && '' !== field.value ) {
+					return;
+				}
+
+				event.stopPropagation();
+				event.preventDefault();
+			},
+			true
+		);
 	}
 
 	/**
@@ -510,10 +601,35 @@
 										text: item
 									} );
 								} else {
-									results.push( {
+									var result = {
 										id: returnId ? String( item.term_id ) : item.slug,
 										text: item.formatted_name || item.name
-									} );
+									};
+
+									// The PHP filter enriches every search result with
+									// the per-term chip baseline (cwc_image_id /
+									// cwc_thumb / cwc_title) — the same payload
+									// render_categories_field() renders for stored
+									// categories. Carry it onto the result object so
+									// select2:select can lay it onto the bare option
+									// before the chip rebuild; when the filter is
+									// unavailable the keys stay undefined and the
+									// picker degrades to the data-cwc-unknown
+									// fail-safe instead of posting empty values that
+									// would delete the term meta.
+									if ( undefined !== item.cwc_image_id ) {
+										result.cwcImageId = item.cwc_image_id;
+									}
+
+									if ( undefined !== item.cwc_thumb ) {
+										result.cwcThumb = item.cwc_thumb;
+									}
+
+									if ( undefined !== item.cwc_title ) {
+										result.cwcTitle = item.cwc_title;
+									}
+
+									results.push( result );
 								}
 							} );
 						}
@@ -665,6 +781,82 @@
 	}
 
 	/**
+	 * Captures live user edits from existing chips before a rebuild.
+	 *
+	 * When rebuildChipList destroys and recreates chips, in-progress overlay
+	 * titles and uploaded image ids are lost because the new chips read from
+	 * the option's server-side data-* attributes. This function snapshots the
+	 * current input values keyed by term id so restoreLiveData can re-apply
+	 * them after the rebuild (D5 bugfix).
+	 *
+	 * @param {HTMLElement} list Chip list element.
+	 * @return {Object} Map of { termId: { title: string, imageId: string } }.
+	 */
+	function captureLiveData( list ) {
+		var data = {};
+
+		list.querySelectorAll( 'li[data-id]' ).forEach( function ( chip ) {
+			var id   = chip.getAttribute( 'data-id' );
+			var titleInput = chip.querySelector( '.cwc-cat-title-input' );
+			var imageInput = chip.querySelector( '.cwc-cat-image-id' );
+
+			if ( titleInput || imageInput ) {
+				data[ id ] = {
+					title:   titleInput ? titleInput.value : '',
+					imageId: imageInput ? imageInput.value : ''
+				};
+			}
+		} );
+
+		return data;
+	}
+
+	/**
+	 * Restores live user edits into freshly rebuilt chips.
+	 *
+	 * Pairs with captureLiveData: after rebuildChipList recreates chips from
+	 * server-side data, this function re-applies the user's in-progress edits
+	 * so overlay titles and uploaded images survive the DOM rebuild (D5
+	 * bugfix).
+	 *
+	 * @param {HTMLElement} list     Chip list element.
+	 * @param {Object}      liveData Map from captureLiveData.
+	 * @return {void}
+	 */
+	function restoreLiveData( list, liveData ) {
+		if ( ! liveData || ! Object.keys( liveData ).length ) {
+			return;
+		}
+
+		list.querySelectorAll( 'li[data-id]' ).forEach( function ( chip ) {
+			var id   = chip.getAttribute( 'data-id' );
+			var edit = liveData[ id ];
+
+			if ( ! edit ) {
+				return;
+			}
+
+			var titleInput = chip.querySelector( '.cwc-cat-title-input' );
+			var imageInput = chip.querySelector( '.cwc-cat-image-id' );
+			var thumb      = chip.querySelector( '.cwc-chip-thumb' );
+
+			if ( titleInput && edit.title !== titleInput.value ) {
+				titleInput.value = edit.title;
+			}
+
+			if ( imageInput && edit.imageId !== imageInput.value ) {
+				imageInput.value = edit.imageId;
+
+				// Refresh the thumbnail preview when the image id was
+				// changed by the user (uploaded via wp.media).
+				if ( thumb && edit.imageId && Number( edit.imageId ) > 0 ) {
+					loadAttachment( Number( edit.imageId ), thumb );
+				}
+			}
+		} );
+	}
+
+	/**
 	 * Rebuilds the chip list from the select's selected options.
 	 *
 	 * The select is the source of truth for the selection; the list is the
@@ -680,6 +872,12 @@
 	function rebuildChipList( list, select, cta ) {
 		var options = select.querySelectorAll( 'option:checked' );
 
+		// Preserve in-progress user edits before destroying chips (bugfix:
+		// previously, switching tabs or adding a new category wiped overlay
+		// titles and uploaded images because rebuildChipList recreated chips
+		// from the server-side data-* attributes instead of the live inputs).
+		var liveData = captureLiveData( list );
+
 		while ( list.firstChild ) {
 			list.removeChild( list.firstChild );
 		}
@@ -687,6 +885,8 @@
 		options.forEach( function ( option ) {
 			list.appendChild( createChip( option ) );
 		} );
+
+		restoreLiveData( list, liveData );
 
 		if ( cta ) {
 			cta.hidden = options.length > 0;
@@ -771,11 +971,19 @@
 	 * (sanitize_text_field, CR-9). Removing the chip does NOT clear the term
 	 * image — that meta is global to the term, not per carousel instance.
 	 *
+	 * An option marked `data-cwc-unknown` (the AJAX result carried no cwc_*
+	 * baseline) emits no inputs at all: a chip that never loaded the term's
+	 * state must never be able to delete it.
+	 *
 	 * @param {HTMLElement} li     Chip element being built.
 	 * @param {HTMLElement} option Selected option with data attributes.
 	 * @return {void}
 	 */
 	function appendEditControls( li, option ) {
+		if ( option.hasAttribute( 'data-cwc-unknown' ) ) {
+			return;
+		}
+
 		var imageId = document.createElement( 'input' );
 		var upload  = document.createElement( 'button' );
 		var title   = document.createElement( 'input' );

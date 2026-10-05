@@ -1,10 +1,11 @@
-# Local AI runtime state
+# AI tooling / runtime state (never shipped)
 .atl/
-
-# Local AI tooling skills (Claude/Cursor project skills). Never shipped.
 .claude/
 .cursor/
-
-# Composer dev dependencies (WPCS). Never shipped in the plugin ZIP.
+# OS / editor
+.DS_Store
+Thumbs.db
+# Node / Composer dev (no usados en runtime; swiper va vendorizado en assets/lib)
+node_modules/
 /vendor/
 /composer.lock
